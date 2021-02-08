@@ -1,16 +1,21 @@
-#ifndef Eletroestimulador_h
-#define Eletroestimulador_h
+#ifndef Electrostimulator_h
+#define Electrostimulator_h
 
 #include "Arduino.h"
 
 #define BUF_LENGTH 64       // Buffer para os comandos vindos da serial
 #define BUF_LENGTH_SMALL 5  // Buffer para receber comandos menores da serial
 
-#define CANAL_PWM 0         // Canal de pwm utilizado (0 a 15)
-#define PWM_RESOLUTION 12   // Resolução (1 a 16 bits) (Quanto maior a resolução, menor a freq máxima)
+#define PWM_CHANNEL 0         // Canal de pwm utilizado (0 a 15)
+#define PWM_RESOLUTION 8   // Resolução de duty cicle (1 a 16 bits)
+#define PWM_FREQ 60000      // Oscilator frequency
+#define PWM_DUTYCICLE 127   // 50% duty cicle
 
-#define SQUARE_WAVE_RES 50
+#define SQUARE_WAVE_RES 256 // Antes era 50
 #define SPIKE_DATA_LENGTH 8000
+
+#define ON 1
+#define OFF 0
 
 // Estados do sistema
 typedef enum{
@@ -25,7 +30,7 @@ typedef enum{
     ANODICA, CATODICA, BIDIRECIONAL
 } i_direction;
 
-class Eletroestimulador
+class Electrostimulator
 {
   private:
     ondas onda = QUADRADA;
@@ -38,6 +43,10 @@ class Eletroestimulador
     uint32_t total_duration = 10000;       //ms
     uint32_t random_bti_min = 500;       //ms
     uint32_t random_bti_max = 3000;      //ms
+
+    uint8_t dac_pin;
+    uint8_t osc_pin;
+    uint8_t sd_pin;
 
 
     uint32_t period = 100000; // (em 0,01 ns)
@@ -63,7 +72,7 @@ class Eletroestimulador
     
     uint8_t pino_dac = 0;
     volatile uint32_t countTotal = 0;  // Controla o tempo total de estimulação
-    volatile uint8_t indexWave = 0;   // Controla o index do vetor que guarda a onda 
+    volatile uint8_t waveIndex = 0;   // Controla o index do vetor que guarda a onda 
     volatile uint8_t DAC_out = 0;     // Valor de saída do DAC usado pela timerISR
 
     volatile bool interrompeu = false;
@@ -75,11 +84,13 @@ class Eletroestimulador
 
     void setupOndaQuad();
     void setupSpike();
+    void stimulatorState(bool turnON);
     
 
   public:
-    Eletroestimulador(uint8_t _pino_dac);
+    Electrostimulator(uint8_t _dac_pin, uint8_t _osc_pin, uint8_t _sd_pin);
 
+    void begin();
     void checkSerial(estados *estadoAtual);
     void checkSerial_Fast(estados *estadoAtual);
     void geraOndaQuad(estados *estadoAtual);

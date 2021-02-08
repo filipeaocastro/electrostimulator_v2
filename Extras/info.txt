@@ -1,0 +1,10 @@
+Info:
+
+Pin D25 - DAC, works only at one semicicle
+Pin D33 - PWM, works as an oscilator to the bridge. Frequency: 60 kHz
+Pin D22 - SD, the shutdown pin, it's active high. HIGH: System output on. LOW: System output off.
+
+Remarks: 
+Order to turn the output on/off:
+ON: PMW -> SD -> DAC
+OFF: DAC -> SD -> PWM

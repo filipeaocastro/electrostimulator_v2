@@ -1,0 +1,15 @@
+C:\Users\Filipe Augusto\Google Drive\UFU\BioLab\Eletroestimulador_v02\electrostimulator_v2\Interface\Electrostimulator_v2\bin\Debug\Eletroestimulador_v02.exe.config
+C:\Users\Filipe Augusto\Google Drive\UFU\BioLab\Eletroestimulador_v02\electrostimulator_v2\Interface\Electrostimulator_v2\bin\Debug\Eletroestimulador_v02.exe
+C:\Users\Filipe Augusto\Google Drive\UFU\BioLab\Eletroestimulador_v02\electrostimulator_v2\Interface\Electrostimulator_v2\bin\Debug\Eletroestimulador_v02.pdb
+C:\Users\Filipe Augusto\Google Drive\UFU\BioLab\Eletroestimulador_v02\electrostimulator_v2\Interface\Electrostimulator_v2\obj\Debug\Electrostimulator_Interface.csprojAssemblyReference.cache
+C:\Users\Filipe Augusto\Google Drive\UFU\BioLab\Eletroestimulador_v02\electrostimulator_v2\Interface\Electrostimulator_v2\obj\Debug\Eletroestimulador_v02.spikeParameters.resources
+C:\Users\Filipe Augusto\Google Drive\UFU\BioLab\Eletroestimulador_v02\electrostimulator_v2\Interface\Electrostimulator_v2\obj\Debug\Eletroestimulador_v02.spkParameters.resources
+C:\Users\Filipe Augusto\Google Drive\UFU\BioLab\Eletroestimulador_v02\electrostimulator_v2\Interface\Electrostimulator_v2\obj\Debug\Eletroestimulador_v02.TelaInicial.resources
+C:\Users\Filipe Augusto\Google Drive\UFU\BioLab\Eletroestimulador_v02\electrostimulator_v2\Interface\Electrostimulator_v2\obj\Debug\Eletroestimulador_v02.Properties.Resources.resources
+C:\Users\Filipe Augusto\Google Drive\UFU\BioLab\Eletroestimulador_v02\electrostimulator_v2\Interface\Electrostimulator_v2\obj\Debug\Eletroestimulador_v02.TelaMain.resources
+C:\Users\Filipe Augusto\Google Drive\UFU\BioLab\Eletroestimulador_v02\electrostimulator_v2\Interface\Electrostimulator_v2\obj\Debug\Eletroestimulador_v02.SpikesForm.resources
+C:\Users\Filipe Augusto\Google Drive\UFU\BioLab\Eletroestimulador_v02\electrostimulator_v2\Interface\Electrostimulator_v2\obj\Debug\Eletroestimulador_v02.TestProtocol.resources
+C:\Users\Filipe Augusto\Google Drive\UFU\BioLab\Eletroestimulador_v02\electrostimulator_v2\Interface\Electrostimulator_v2\obj\Debug\Electrostimulator_Interface.csproj.GenerateResource.cache
+C:\Users\Filipe Augusto\Google Drive\UFU\BioLab\Eletroestimulador_v02\electrostimulator_v2\Interface\Electrostimulator_v2\obj\Debug\Electrostimulator_Interface.csproj.CoreCompileInputs.cache
+C:\Users\Filipe Augusto\Google Drive\UFU\BioLab\Eletroestimulador_v02\electrostimulator_v2\Interface\Electrostimulator_v2\obj\Debug\Eletroestimulador_v02.exe
+C:\Users\Filipe Augusto\Google Drive\UFU\BioLab\Eletroestimulador_v02\electrostimulator_v2\Interface\Electrostimulator_v2\obj\Debug\Eletroestimulador_v02.pdb

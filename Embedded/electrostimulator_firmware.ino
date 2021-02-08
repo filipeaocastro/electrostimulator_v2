@@ -21,26 +21,23 @@
   são definidas em STAND_BY.
 */
 
-#include "Eletroestimulador.h"
+#include "Electrostimulator.h"
 
-#define TiposDeOnda 3
-#define QteAmostras 100
-#define PINO_SAIDA 25       // Saída para a fonte de corrente
+#define TiposDeOnda 3   // Necessary?
+#define WAVE_RESOLUTION 100
+#define DAC_REF_PIN 25       // Saída para a fonte de corrente
+#define PWM_OSC_PIN 33  // PWM oscilator output
+#define SD_PIN 22 // Shut Down pin - Active high
 
 estados estado = STAND_BY;
 
 hw_timer_t * timer = NULL;
-Eletroestimulador eest(PINO_SAIDA);
+Electrostimulator stimulator(DAC_REF_PIN, PWM_OSC_PIN, SD_PIN);
 
-static byte formasDeOnda[TiposDeOnda][QteAmostras] = {0};
+//static byte formasDeOnda[TiposDeOnda][QteAmostras] = {0};
 
 bool mudouDAC = false;
 
-//portMUX_TYPE timerMux = portMUX_INITIALIZER_UNLOCKED;
-
-//volatile bool _interrompeu = false;
-
-//void IRAM_ATTR timerISR();
 
 
 
@@ -54,15 +51,16 @@ bool mudouDAC = false;
 
 void setup() 
 {
-  dacWrite(PINO_SAIDA, 128);
+  stimulator.begin();
+
   mudouDAC = false;
   Serial.begin(115200);
-  pinMode(27, INPUT_PULLUP); // Botão
+  
 
   timer = timerBegin(0, 8, true);  // inicia com o passo de 0.1 us
   timerAttachInterrupt(timer, &timerISR, true);
-  eest.configTimer(timer);
-  //eest.interromp(&_interrompeu, &timerMux);
+  stimulator.configTimer(timer);
+  //stimulator.interromp(&_interrompeu, &timerMux);
 
 }
 
@@ -71,94 +69,66 @@ void loop()
   switch (estado)
   {
     case STAND_BY:
-      if(mudouDAC)
-      {
-        dacWrite(PINO_SAIDA, 128);
-        mudouDAC = false;
-      }
-      eest.checkSerial(&estado);
+      stimulator.checkSerial(&estado);
       break;
 
     case EE_SPK:
-      mudouDAC = true;
-      eest.geraSpike(&estado);
+      stimulator.geraSpike(&estado);
       break;
 
     case EE_WF:
-      mudouDAC = true;
       //geraFormaDeOnda();
       break;
 
     case EE_SQUARE:
-      mudouDAC = true;
-      eest.geraOndaQuad(&estado);
+      stimulator.geraOndaQuad(&estado);
       break;
   }
 
 }
 
-void ondaSeno(int direcao, int amp)
-{
-  /*
-    ********** COLOCAR RECURSO DE ALTERAR A AMPLITUDE ***************
-  */
+// void ondaSeno(int direcao, int amp)
+// {
+//   /*
+//     ********** COLOCAR RECURSO DE ALTERAR A AMPLITUDE ***************
+//   */
 
-  // Senoide
-  float step = 360.0 / (float)QteAmostras;
-  float stepSum = 0;
-  for(int i = 0; i < QteAmostras; i ++)
-  {
-    formasDeOnda[0][i] = (byte) (((sin((stepSum * PI) / 180.0) / 2) + 0.5) * 128);
+//   // Senoide
+//   float step = 360.0 / (float)QteAmostras;
+//   float stepSum = 0;
+//   for(int i = 0; i < QteAmostras; i ++)
+//   {
+//     formasDeOnda[0][i] = (byte) (((sin((stepSum * PI) / 180.0) / 2) + 0.5) * 128);
 
-    stepSum += step;
-  }
-}
+//     stepSum += step;
+//   }
+// }
 
-void ondaTriang(int direcao, int amp)
-{
-  /*
-    ********** COLOCAR RECURSO DE ALTERAR A AMPLITUDE ***************
-  */
+// void ondaTriang(int direcao, int amp)
+// {
+//   /*
+//     ********** COLOCAR RECURSO DE ALTERAR A AMPLITUDE ***************
+//   */
 
-  // Onda triangular
-  float step = 128 / (QteAmostras / 2);
-  float stepSum = 0;
-  for(int i = 0; i < (QteAmostras / 2); i ++)
-  {
-    formasDeOnda[1][i] =  stepSum;
-    stepSum += step;
-  }
+//   // Onda triangular
+//   float step = 128 / (QteAmostras / 2);
+//   float stepSum = 0;
+//   for(int i = 0; i < (QteAmostras / 2); i ++)
+//   {
+//     formasDeOnda[1][i] =  stepSum;
+//     stepSum += step;
+//   }
 
-  stepSum = 128;
-  for(int i = (QteAmostras / 2); i < QteAmostras; i ++)
-  {
-    formasDeOnda[1][i] = stepSum;
-    stepSum -= step;
-  }
-}
+//   stepSum = 128;
+//   for(int i = (QteAmostras / 2); i < QteAmostras; i ++)
+//   {
+//     formasDeOnda[1][i] = stepSum;
+//     stepSum -= step;
+//   }
+// }
 
-void ondaQuad(int direcao, int amp, float pulseWidth)
-{
-  /*
-    ********** COLOCAR RECURSO DE ALTERAR A AMPLITUDE ***************
-  */
-  int edge = int(pulseWidth * (float)QteAmostras / 100.0);
-  // botar uma regra de 3 com o pulseW e a QteAmostras
-
-  for(int i = 0; i < QteAmostras; i++)
-  {
-    if(i < edge)
-      formasDeOnda[2][i] = 128;
-    else
-      formasDeOnda[2][i] = 0;
-  }
-}
 
 void timerISR()
 {
-    eest.IRQtimer();
-
-    //portENTER_CRITICAL_ISR(&timerMux);
-   // _interrompeu = true;
-    //portEXIT_CRITICAL_ISR(&timerMux);
+    stimulator.IRQtimer();
 }

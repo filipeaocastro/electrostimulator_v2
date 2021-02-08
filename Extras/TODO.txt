@@ -1,0 +1,8 @@
+TODO:
+
+[ ] Implement the 60 kHz PWM on pin D33
+[ ] Make the DAC work at only one semicicle (instead of around 1,65 V)
+[ ] Implement the shutdown pin
+[ ] Find out the DAC~current relation
+[ ] Change the constructor name (not eest)
+[ ] Remove all references to current direction

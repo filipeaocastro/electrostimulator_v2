@@ -1,11 +1,26 @@
-#include "Eletroestimulador.h"
+#include "Electrostimulator.h"
 
-Eletroestimulador::Eletroestimulador(uint8_t _pino_dac)
+Electrostimulator::Electrostimulator(uint8_t _dac_pin, uint8_t _osc_pin, uint8_t _sd_pin)
 {
-    pino_dac = _pino_dac;
+    dac_pin = _dac_pin;
+    osc_pin = _osc_pin;
+    sd_pin = _sd_pin;
 }
 
-void Eletroestimulador::checkSerial(estados *estadoAtual)
+void Electrostimulator::begin()
+{
+    pinMode(sd_pin, OUTPUT);
+    pinMode(dac_pin, OUTPUT);
+
+    ledcSetup(PWM_CHANNEL, PWM_FREQ, PWM_RESOLUTION);
+    ledcAttachPin(osc_pin, PWM_CHANNEL);
+
+    digitalWrite(sd_pin, LOW);
+    ledcWrite(PWM_CHANNEL, OFF);
+    dacWrite(dac_pin, OFF); // Put the output to low before starting
+}
+
+void Electrostimulator::checkSerial(estados *estadoAtual)
 {
     while(Serial.available() > 2)
     {
@@ -72,7 +87,7 @@ void Eletroestimulador::checkSerial(estados *estadoAtual)
             //float tensao = 1500 * (i_amp * 0.000001); // Converte de uA pra A
             //tensao *= 100; // Transforma de 1,5 pra 150
             //valor_DAC = map((uint16_t)tensao, 54, 274, 0, 4095);    // Converte pra saida do DAC em 8 bits de resolução
-            valor_DAC = map(i_amp, 0, 5000, 0, 127);
+            valor_DAC = map(i_amp, 0, 5000, 0, 255);
             //Serial.println(valor_DAC);
 
             //analogWrite(SAIDA_DAC, saida_DAC);
@@ -260,7 +275,7 @@ void Eletroestimulador::checkSerial(estados *estadoAtual)
     }
 }
 
-void Eletroestimulador::checkSerial_Fast(estados *estadoAtual)
+void Electrostimulator::checkSerial_Fast(estados *estadoAtual)
 {
     while(Serial.available() > 2)
     {
@@ -284,7 +299,7 @@ void Eletroestimulador::checkSerial_Fast(estados *estadoAtual)
 }
 
 // Função chamada na maquina de estados
-void Eletroestimulador::geraOndaQuad(estados *estadoAtual)
+void Electrostimulator::geraOndaQuad(estados *estadoAtual)
 {
     long tempo_on_total = millis();
     long tempo_teste = millis();
@@ -292,45 +307,10 @@ void Eletroestimulador::geraOndaQuad(estados *estadoAtual)
     uint8_t valor_saida = 127;
     uint8_t multiplier = 1;
     uint8_t sum = 0;
-    uint8_t valorUp = 0;
-    uint8_t valorDown = 0;
+    uint8_t DAC_On = valor_DAC;
+    uint8_t DAC_Off = OFF;
 
-    Serial.write("INITIATED\n");
-
-    // Ajusta a direção de saída de corrente
-    switch (direcao_corrente)
-    {
-        // Catodica: 0 a 1.65 V
-        case CATODICA:
-            //sum = 0;
-            //multiplier = 1;
-            valorUp = 127 - valor_DAC;
-            valorDown = 127;
-            break;
-
-        // Anodica 1.65 a 3.3 V
-        case ANODICA:
-            //sum = 128;
-            //multiplier = 1;
-            valorUp = 128 + valor_DAC;
-            valorDown = 127;
-            break;
-
-        // Bidirecional 0 a 3.3 V
-        case BIDIRECIONAL:
-            sum = 0;
-            multiplier = 2;
-            valorUp = 128 + valor_DAC;
-            valorDown = 127 - valor_DAC;
-            break;
-    }
-
-    //uint8_t conta = (valor_DAC + sum) * multiplier;
-    if(valorUp > 255) valorUp = 255;
-    if(valorDown > 255) valorDown = 255;
-
-    if(valorUp < 0) valorUp = 0;
-    if(valorDown < 0) valorDown = 0;
+    
     
     uint16_t newStep = (uint16_t)step;
     
@@ -341,118 +321,74 @@ void Eletroestimulador::geraOndaQuad(estados *estadoAtual)
     Serial.write("tempoTotal = ");
     Serial.println(tempoTotal);
 
-    portENTER_CRITICAL(&timerMux);
-    indexWave = 0;
-    countTotal = 0;
-    portEXIT_CRITICAL(&timerMux);
+    Serial.write("INITIATED\n");
 
-    if(ondaQ[indexWave] == 1)
+    //portENTER_CRITICAL(&timerMux);
+    waveIndex = 0;  // Index of the square wave
+    countTotal = 0; // Total count of ticks (when it reachs tempoTotal the stimulation is stopped)
+    //portEXIT_CRITICAL(&timerMux);
+
+    stimulatorState(ON);
+
+    if(ondaQ[waveIndex] == 1)
     {
         portENTER_CRITICAL(&timerMux);
-        DAC_out =  valorUp; // Controla a saída do DAC de acordo com a onda guardada em ondaQ
+        DAC_out = DAC_On; // Controla a saída do DAC de acordo com a onda guardada em ondaQ
         portEXIT_CRITICAL(&timerMux);
     }    
     else
     {
         portENTER_CRITICAL(&timerMux);
-        DAC_out =  valorDown; // Controla a saída do DAC de acordo com a onda guardada em ondaQ
+        DAC_out = DAC_Off; // Controla a saída do DAC de acordo com a onda guardada em ondaQ
         portEXIT_CRITICAL(&timerMux); 
     }
     timerAlarmWrite(timer_INT, nTicks, true);
     timerAlarmEnable(timer_INT);
     
-    
-
-    
-
 
     // Só sai do while se receber o comando STO ou atingir o tempo máximo
     while (true)
     {
-        /*
-        for(uint16_t i = 0; i < SQUARE_WAVE_RES; i++) // Controla a saída da onda
-        {
-            //Serial.println(i);
-            //valor_saida = ondaQ[i] * conta;
-            
-            if(ondaQ[i] == 1)
-                dacWrite(pino_dac, valorUp); // Controla a saída do DAC de acordo com a onda guardada em ondaQ
-            else
-            {
-                dacWrite(pino_dac, valorDown); // Controla a saída do DAC de acordo com a onda guardada em ondaQ
-            }
-
-
-            //dacWrite(pino_dac, valor_saida); // Controla a saída do DAC de acordo com a onda guardada em ondaQ
-            tempo_step = micros();
-
-            // Mantém a saída do DAC de acordo com o tempo entre cada amostra
-            while(micros() - tempo_step < newStep);
-            //delayMicroseconds(newStep); 
-        }*/
-
-        // Checa o estado da serial a cada ciclo da onda
-        //checkSerial_Fast(estadoAtual);  // Verifica se o comando STO não chegou
-        /*
-        if(*estadoAtual == EE_SQUARE)
-            Serial.write("Ta em EE_SQUARE\n");
-
-        else
-            Serial.write("Nao ta em EE_SQUARE\n");
-            */
-        // Caso o estado mude, ele sai da função
-        /*
-        if(*estadoAtual != EE_SQUARE)
-        {
-            dacWrite(pino_dac, 128);
-            Serial.write("STOPPED\n");
-            return;
-        }*/
-        // Sai da função se atingir o tempo máximo
-        /*
-        if( ((millis() - tempo_on_total) > total_duration) && (total_duration != 0))
-        {
-            *estadoAtual = STAND_BY;
-            Serial.write("STOPPED\n");
-            return;
-        }*/
-
         // ******************* CONTROLE POR TIMER **********************
         // Não precisa usar o critical section pra ler variável compartilhada
 
         if(interrompeu)
         {
-            dacWrite(pino_dac, DAC_out);
+            // Escreve na saída do DAC
+            dacWrite(dac_pin, DAC_out);
+
+            // Reset na variável de interrupção
             portENTER_CRITICAL(&timerMux);
             interrompeu = false;
             portEXIT_CRITICAL(&timerMux);
             
+            // Soma os ticks passados ao total de ticks da duração total
             countTotal += (uint32_t)nTicks;
-            if(indexWave == SQUARE_WAVE_RES)
-                indexWave = 0;
-            
+
+            if(waveIndex == SQUARE_WAVE_RES)
+                waveIndex = 0;
             else
-                indexWave++;
+                waveIndex++;
         }
 
 
-        if(ondaQ[indexWave] == 1)
+        if(ondaQ[waveIndex] == 1)
         {
             //portENTER_CRITICAL(&timerMux);
-            DAC_out =  valorUp; // Controla a saída do DAC de acordo com a onda guardada em ondaQ
+            DAC_out = DAC_On; // Controla a saída do DAC de acordo com a onda guardada em ondaQ
             //portEXIT_CRITICAL(&timerMux);
         }    
         else
         {
             //portENTER_CRITICAL(&timerMux);
-            DAC_out =  valorDown; // Controla a saída do DAC de acordo com a onda guardada em ondaQ
+            DAC_out = DAC_Off; // Controla a saída do DAC de acordo com a onda guardada em ondaQ
             //portEXIT_CRITICAL(&timerMux); 
         }
 
         if(*estadoAtual != EE_SQUARE)
         {
             timerAlarmDisable(timer_INT);
-            dacWrite(pino_dac, 128);
+            stimulatorState(OFF);
             Serial.write("STOPPED\n");
             return;
         }
@@ -460,27 +396,18 @@ void Eletroestimulador::geraOndaQuad(estados *estadoAtual)
         if(countTotal >= tempoTotal)
         {
             timerAlarmDisable(timer_INT);
+            stimulatorState(OFF);
             *estadoAtual = STAND_BY;
             Serial.write("STOPPED\n");
             return;
         }
         checkSerial_Fast(estadoAtual);  // Verifica se o comando STO não chegou
-
-/*
-        if((millis() - tempo_teste) > 1000)
-        {
-            tempo_teste = millis();
-            Serial.print("countTotal = ");
-            Serial.write(countTotal);
-            Serial.println();
-        }
-*/
     }
 }
 
 // Função chamada quando chega a mensagem 'WFM-SQR'
 // Regula as variáveis para que a função geraOndaQuad funcione corretamente
-void Eletroestimulador::setupOndaQuad()
+void Electrostimulator::setupOndaQuad()
 {
     uint16_t samples;
 
@@ -533,19 +460,19 @@ void Eletroestimulador::setupOndaQuad()
     //ledcAttachPin(PINO_SAIDA, CANAL_PWM);
 }
 
-void Eletroestimulador::geraFormaDeOnda()
+void Electrostimulator::geraFormaDeOnda()
 {
     // ver qual a onda ativa
 }
 
-void Eletroestimulador::IRQtimer()
+void Electrostimulator::IRQtimer()
 {
     /*
-    dacWrite(pino_dac, DAC_out);
+    dacWrite(dac_pin, DAC_out);
     portENTER_CRITICAL_ISR(&timerMux);
     countTotal += nTicks;
     portEXIT_CRITICAL_ISR(&timerMux);
-    if(indexWave == SQUARE_WAVE_RES)
+    if(waveIndex == SQUARE_WAVE_RES)
     {
         portENTER_CRITICAL_ISR(&timerMux);
         indexWave = 0;
@@ -560,18 +487,15 @@ void Eletroestimulador::IRQtimer()
     portENTER_CRITICAL_ISR(&timerMux);
     interrompeu = true;
     portEXIT_CRITICAL_ISR(&timerMux);
-
-    // botar o timer mux em cima pra ver se faz diferença
-
 }
 
-void Eletroestimulador::configTimer(hw_timer_t * _timer)
+void Electrostimulator::configTimer(hw_timer_t * _timer)
 {
     //timerAttachInterrupt(_timer, fn, true);
     timer_INT = _timer;
 }
 
-void Eletroestimulador::geraSpike(estados *estadoAtual)
+void Electrostimulator::geraSpike(estados *estadoAtual)
 {
     bool nextSpike = false;
     uint8_t n_interrupts = 0;
@@ -626,14 +550,14 @@ void Eletroestimulador::geraSpike(estados *estadoAtual)
             {
                 // If so, the output goes high during the next (intrrpts_spk_on) interrptions
                 //Serial.write("SPK\n");
-                dacWrite(pino_dac, spk_on);
+                dacWrite(dac_pin, spk_on);
                 spk_true = intrrpts_spk_on;   // The time of interrupts that the spike will remain on
                 spike_off = false;
             }
             // If the next spike is 0, the spike on timed out and there is a spike on, turns it off
             else if(!spike_data[spkIndex] && (spk_true == 0) && (spike_off == false) )
             {
-                dacWrite(pino_dac, spk_off);
+                dacWrite(dac_pin, spk_off);
                 spike_off = true;
             }
         }
@@ -643,14 +567,14 @@ void Eletroestimulador::geraSpike(estados *estadoAtual)
         if(*estadoAtual != EE_SPK)
         {
             timerAlarmDisable(timer_INT);
-            dacWrite(pino_dac, 128);
+            dacWrite(dac_pin, 128);
             Serial.write("STOPPED\n");
             timer_on = false;
             return;
         }
     }
 }
-void Eletroestimulador::setupSpike()
+void Electrostimulator::setupSpike()
 {
     switch (direcao_corrente)
     {
@@ -696,10 +620,30 @@ void Eletroestimulador::setupSpike()
     Serial.println((uint32_t)intrrpts_spk_on);
 }
 
-void Eletroestimulador::interromp(volatile bool * _int, portMUX_TYPE * _timerMux)
+void Electrostimulator::interromp(volatile bool * _int, portMUX_TYPE * _timerMux)
 {
     //interrompeu = _int;
     //timerMux = _timerMux;
+}
+
+void Electrostimulator::stimulatorState(bool turnON)
+{
+    if(turnON)
+    {
+        ledcWrite(PWM_CHANNEL, PWM_DUTYCICLE);
+        delay(2);
+        digitalWrite(sd_pin, HIGH);
+        delay(2);
+        // The DAC signal will be controlled by other functions
+    }
+    else
+    {
+        dacWrite(dac_pin, OFF);
+        delay(2);
+        digitalWrite(sd_pin, LOW);
+        delay(2);
+        ledcWrite(PWM_CHANNEL, OFF);
+    }
 }
 
 /*

@@ -72,6 +72,8 @@
             this.label_msIntervaloMin = new System.Windows.Forms.Label();
             this.groupBox_intervalo = new System.Windows.Forms.GroupBox();
             this.checkBox_aletorio = new System.Windows.Forms.CheckBox();
+            this.label_ANL = new System.Windows.Forms.Label();
+            this.label_ANLvalue = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown_estimuloAtual)).BeginInit();
             this.groupBox_tipoOnda.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown_qteEstimulos)).BeginInit();
@@ -320,9 +322,9 @@
             this.label_uApp.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.label_uApp.Location = new System.Drawing.Point(198, 16);
             this.label_uApp.Name = "label_uApp";
-            this.label_uApp.Size = new System.Drawing.Size(35, 15);
+            this.label_uApp.Size = new System.Drawing.Size(21, 15);
             this.label_uApp.TabIndex = 33;
-            this.label_uApp.Text = "μApp";
+            this.label_uApp.Text = "μA";
             // 
             // textBox_freq
             // 
@@ -419,12 +421,13 @@
             this.groupBox_tipoCorrente.Controls.Add(this.radioButton_tipoAlternada);
             this.groupBox_tipoCorrente.Controls.Add(this.radioButton_tipoAnodica);
             this.groupBox_tipoCorrente.Controls.Add(this.radioButton_tipoCatodica);
-            this.groupBox_tipoCorrente.Location = new System.Drawing.Point(12, 407);
+            this.groupBox_tipoCorrente.Location = new System.Drawing.Point(6, 377);
             this.groupBox_tipoCorrente.Name = "groupBox_tipoCorrente";
             this.groupBox_tipoCorrente.Size = new System.Drawing.Size(239, 42);
             this.groupBox_tipoCorrente.TabIndex = 19;
             this.groupBox_tipoCorrente.TabStop = false;
             this.groupBox_tipoCorrente.Text = "Tipo de corrente";
+            this.groupBox_tipoCorrente.Visible = false;
             // 
             // radioButton_tipoAlternada
             // 
@@ -585,11 +588,36 @@
             this.checkBox_aletorio.Text = "Executar em ordem aleatória";
             this.checkBox_aletorio.UseVisualStyleBackColor = true;
             // 
+            // label_ANL
+            // 
+            this.label_ANL.AutoSize = true;
+            this.label_ANL.Enabled = false;
+            this.label_ANL.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.label_ANL.Location = new System.Drawing.Point(13, 422);
+            this.label_ANL.Name = "label_ANL";
+            this.label_ANL.Size = new System.Drawing.Size(101, 15);
+            this.label_ANL.TabIndex = 32;
+            this.label_ANL.Text = "Corrente na pele:";
+            // 
+            // label_ANLvalue
+            // 
+            this.label_ANLvalue.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.label_ANLvalue.Enabled = false;
+            this.label_ANLvalue.Font = new System.Drawing.Font("Microsoft Sans Serif", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.label_ANLvalue.Location = new System.Drawing.Point(150, 422);
+            this.label_ANLvalue.Name = "label_ANLvalue";
+            this.label_ANLvalue.Size = new System.Drawing.Size(101, 15);
+            this.label_ANLvalue.TabIndex = 33;
+            this.label_ANLvalue.Text = "0 μA";
+            this.label_ANLvalue.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            // 
             // TelaMain
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(347, 551);
+            this.Controls.Add(this.label_ANLvalue);
+            this.Controls.Add(this.label_ANL);
             this.Controls.Add(this.checkBox_aletorio);
             this.Controls.Add(this.groupBox_intervalo);
             this.Controls.Add(this.groupBox_tipoCorrente);
@@ -669,5 +697,7 @@
         private System.Windows.Forms.GroupBox groupBox_intervalo;
         private System.Windows.Forms.CheckBox checkBox_aletorio;
         private System.Windows.Forms.RadioButton radioButton_tipoDenteDeSerra;
+        private System.Windows.Forms.Label label_ANL;
+        private System.Windows.Forms.Label label_ANLvalue;
     }
 }

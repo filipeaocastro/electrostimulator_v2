@@ -86,6 +86,7 @@ namespace Eletroestimulador_v02
                     string txt = ESPSerial.ReadLine();
                     Console.WriteLine(txt);
                     string newLabel = "";
+                    string[] split = txt.ToString().Split('-');
 
                     // STOPPED quer dizer que a estimulação chegou ao fim, então a label do botão muda 
                     //  pra "Iniciar"
@@ -109,7 +110,17 @@ namespace Eletroestimulador_v02
                     {
                         newLabel = "Iniciar";
                         changeState(newLabel);  // Função que muda o estado dos botões
-                    } 
+                    }
+
+                    
+
+                    else if(split[0].Equals("ANL"))
+                    {
+                        double ANLvalue = (Convert.ToInt32(split[1]) * 3.3) / 4095; // Convert from bits to Volts
+                        ANLvalue /= 1000;   // Convert from Volts to Ampères
+                        ANLvalue *= 1000000;    // Convert from Ampères to μA
+                        changeLabelAnalog(Convert.ToInt32(ANLvalue).ToString() + " μA");
+                    }
                 }
             }
         }
@@ -139,6 +150,34 @@ namespace Eletroestimulador_v02
         {
             button_iniciar.Text = newLabel;
         }
+
+        #region AnalogDelegate
+        // Como a thread de leitura tenta alterar um parâmetro da thread principal (que rege o form) ela
+        //  precisa de um delegado que solicita essa mudança para a thread principal, evitando uma exceção
+        private delegate void changeLabelAnalogDelegate(string newLabel);
+
+        private void changeLabelAnalog(string newLabel)
+        {
+            // Caso a thread principal esteja usando o botão, ele invoca o delegado para que ele seja alterado
+            if (this.label_ANLvalue.InvokeRequired)
+            {
+                object[] args = new object[] { newLabel };
+                changeLabelAnalogDelegate changeLabelAnalog_Delegate = changeLabelANL;
+                this.Invoke(changeLabelAnalog_Delegate, args);
+            }
+            // Caso contrário, apenas muda o botão
+            else
+                changeLabelANL(newLabel);
+        }
+
+        // Função que ativa e desativa o botão de 'Parar'
+        // >> Ressaltando que existe um evento ligado à mudança da label do botão, que altera a 
+        //      máquina de estados do sistema
+        void changeLabelANL(string newLabel)
+        {
+            label_ANLvalue.Text = newLabel;
+        }
+        #endregion
 
         /**
         * Essa função procura nos dispositivos do Windows um que possua o nome definido pelo barramento
@@ -255,6 +294,8 @@ namespace Eletroestimulador_v02
                     th.Start();
 
                     button_iniciar.Enabled = true;  // Ativa o botão iniciar
+                    label_ANL.Enabled = true;
+                    label_ANLvalue.Enabled = true;
                 }
             }
             catch (Exception ex)
