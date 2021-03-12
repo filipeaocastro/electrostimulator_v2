@@ -96,7 +96,7 @@ void Electrostimulator::checkSerial(estados *estadoAtual)
             //tensao *= 100; // Transforma de 1,5 pra 150
             //valor_DAC = map((uint16_t)tensao, 54, 274, 0, 4095);    // Converte pra saida do DAC em 8 bits de resolução
             //valor_DAC = map(i_amp, 0, CORRENTE_MAX, 0, 255);
-            set_current = (uint8_t)(map(i_amp, 0, CORRENTE_MAX, 0, 255));
+            set_current = (uint16_t)(map(i_amp, 0, CORRENTE_MAX, 0, std_resolution));
             //Serial.println(valor_DAC);
 
             //analogWrite(SAIDA_DAC, saida_DAC);
@@ -363,6 +363,9 @@ void Electrostimulator::geraOndaQuad(estados *estadoAtual)
                 waveIndex = 0;
             else
                 waveIndex++;
+
+            Serial.write("Controle = ");
+            Serial.println(controle);
         }
 
         if(*estadoAtual != EE_SQUARE)
@@ -481,6 +484,8 @@ void Electrostimulator::IRQ_timer_int()
     }
     else
         if(ondaQ[waveIndex]) calc_controle();
+
+    
 }
 
 void Electrostimulator::configTimer(hw_timer_t * _timer, hw_timer_t * _timer_int)
@@ -642,9 +647,9 @@ void Electrostimulator::stimulatorState(bool turnON)
 }
 
 // Lê ADC_AVG vezes uma entrada analógica e faz a média desse valor
-uint16_t Electrostimulator::readADC(uint8_t adc_pin)
+int16_t Electrostimulator::readADC(uint8_t adc_pin)
 {
-    uint16_t sum;
+    int16_t sum;
     for(int i = 0; i < ADC_AVG; i++)
         sum += analogRead(adc_pin);
     sum /= ADC_AVG;
@@ -654,16 +659,27 @@ uint16_t Electrostimulator::readADC(uint8_t adc_pin)
 // Altera a variável de controle
 void Electrostimulator::calc_controle()
 {
-    float erro = (float)((!digitalRead(switch_pin)) ? (readADC(adc_sp_pin) - readADC(adc_curr_pin)) : (set_current - readADC(adc_curr_pin)));
-    mProp = KProp * erro;
-    mInt += KInt * erro;
+    int16_t erro;// = (float)((!digitalRead(switch_pin)) ? (readADC(adc_sp_pin) - readADC(adc_curr_pin)) : (set_current - readADC(adc_curr_pin)));
+    if(!digitalRead(switch_pin))
+        erro = readADC(adc_sp_pin) - readADC(adc_curr_pin);
+    else
+        erro = set_current - readADC(adc_curr_pin);
+    mProp = erro/iKProp;
+    mInt += erro/iKInt;
     controle = setBound(mProp + mInt);
+
+    //Serial.write("Controle = ");
+    //Serial.println(controle);
 }
 
+// SE MUDAR O ADC RESOLUTION (8), TEM QUE MUDAR ESSA FUNÇÃO
 // Limita o valor de entrada entre dacMin e dacMax
-uint8_t Electrostimulator::setBound(float val)
+uint8_t Electrostimulator::setBound(int16_t val)
 {
-    return (uint8_t)((val > dacMax) ? dacMax : ((val < dacMin) ? dacMin : val));
+    if(val > dacMax) return dacMax;
+    if(val < dacMin) return dacMin;
+    return (uint8_t)val;
+    //return (uint8_t)((val > dacMax) ? dacMax : ((val < dacMin) ? dacMin : val));
 }
 
 // Ativa e desativa os timers

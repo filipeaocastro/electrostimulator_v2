@@ -65,6 +65,7 @@ void setup()
   timerAttachInterrupt(timer, &timerISR, true);
 
   timer_int = timerBegin(1, 80, true); // inicia com o passo de 1 us
+  timerAttachInterrupt(timer_int, &timerISR_Int, true);
 
   stimulator.configTimer(timer, timer_int);
   //stimulator.interromp(&_interrompeu, &timerMux);
@@ -138,4 +139,9 @@ void loop()
 void timerISR()
 {
     stimulator.IRQtimer();
+}
+
+void timerISR_Int()
+{
+  stimulator.IRQ_timer_int();
 }

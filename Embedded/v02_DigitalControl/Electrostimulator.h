@@ -11,10 +11,10 @@
 #define PWM_FREQ 80000      // Oscilator frequency
 #define PWM_DUTYCICLE 127   // 50% duty cicle
 
-#define ADC_RESOLUTION 9
-#define ADC_AVG 10
+#define ADC_RESOLUTION 8
+#define ADC_AVG 3
 
-#define TICKS_INT 5
+#define TICKS_INT 100
 
 #define SQUARE_WAVE_RES 255 // Antes era 50
 #define SPIKE_DATA_LENGTH 8000
@@ -63,7 +63,9 @@ class Electrostimulator
     uint32_t duty = 0;  // %
 
     uint16_t valor_DAC = 0;
-    uint8_t set_current = 0;
+    uint16_t set_current = 0;
+
+    const uint16_t std_resolution = pow(2, ADC_RESOLUTION) - 1;
 
     bool ondaQ[SQUARE_WAVE_RES] = {0}; 
 
@@ -96,15 +98,17 @@ class Electrostimulator
 
     // Variáveis do controle PI
     const float KInt = 0.1, KProp = 0.2;
-    float mInt = 0, mProp = 0;
+    const uint8_t iKInt = (uint8_t)(1/KInt);
+    const uint8_t iKProp = (uint8_t)(1/KProp);
+    int16_t mInt = 0, mProp = 0;
     uint8_t controle = 0;
 
 
     const uint8_t dacMin = 0, dacMax = 255;
 
     void calc_controle();
-    uint16_t readADC(uint8_t adc_pin);
-    uint8_t setBound(float val);
+    int16_t readADC(uint8_t adc_pin);
+    uint8_t setBound(int16_t val);
     
 
     void setupOndaQuad();
