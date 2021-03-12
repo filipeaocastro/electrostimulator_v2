@@ -12,6 +12,22 @@ using System.Windows.Forms;
 using System.Diagnostics;
 using System.IO;
 
+/*
+ *  This form class controls the test protocol in software. 
+ *  After the user load the textures and connect to the uC in the SpikesForm, this protocol may be started.
+ *  
+ *  The first step is click on the Start Button. 
+ *  This click cause an event that triggers a countdown and loads the spike texture into the uC.
+ *  After the countdown, it is shown the texture image while stimulating the patient according to this texture. After the 
+ *  stimualtion is over, it is made an interval before the next texture. This process repeats 3 times (one for each texture).
+ *  Then, after a bigger interval, a cross appears on the screen with a stimulation in parallel. This process is repeated 15
+ *  times with an interval of 5 to 7 seconds between each one. Each stimulation is cessed when the user press a key (1, 2 or 3)
+ *  or after 7.3 seconds (the duration of each texture).
+ *  At the end is generated a file with all information about the relation of the texture order, key pressed, duration, etc.
+ *  
+ * 
+ * 
+ */
 
 namespace Eletroestimulador_v02
 {
@@ -22,92 +38,92 @@ namespace Eletroestimulador_v02
         private long[] elapedTime = new long[15];
         private string[] arrowPressedArr = new string[15];
         private int textureSeqIndex = 0;    // Controls the 15 texture sequence
-        private int sequenceIndex = 0;      // Controls the screen sequence during the protocol
+        private int sequenceIndex = 0;      // Controls the texture image sequence during the protocol
         private int countdown = 0;
         private string pressedKey;
 
         private bool activeProgBar = false;
         
 
-        
+        // Stopwatch to compute the elapsed time
         Stopwatch interval = new Stopwatch();
         private long nanosecPerTick = (1000L * 1000L * 1000L) / Stopwatch.Frequency;
         private long tempoDecorrido = 0;
 
-        Thread increment_progBar;
-
         StreamWriter myStream;
         SaveFileDialog saveFileDialog1;
 
-        #region enums
+        // Enums for defining the system's possible states
+        #region enums defining the system states
 
+        // States of the screen
         private enum screen_states
         {
-            COUNTDOWN,
-            IMAGE,
-            CROSS
+            COUNTDOWN,  // In countdown (black screen)
+            IMAGE,      // Showing the texture image
+            CROSS       // Showing a cross
         }
         screen_states screenState;
 
+        // Defines the states of the test protocol
         private enum test_step
         {
-            STOPPED,
-            TEXTURE_IMAGES,
-            WAITING_FOR_START,
-            STIMULATION_ON
+            STOPPED,            // Initial state
+            TEXTURE_IMAGES,     // Showing the texture images
+            WAITING_FOR_START,  // Interval among stimulations
+            STIMULATION_ON      // Stimulating
         }
         test_step testStep;
 
+        // States of the serial communication
         private enum serial_states
         {
-            STOPPED = 0,
-            INITIATED,
-            UPDATED,
-            IDLE
+            STOPPED = 0,    // Not stimulating
+            INITIATED,  // Stimulation started
+            UPDATED,    // uC updated and ready to start stimulation
+            IDLE    // Initial state
         }
         serial_states serial_States = serial_states.IDLE;
 
         #endregion
 
+
         #region Constructors
+
+        // Default constructor
         public TestProtocol()
         {
             InitializeComponent();
-
         }
 
+        // Constructor to pass the previous form as a parameter to use its thread for serial communication
         public TestProtocol(SpikesForm _telaSpikes)
         {
             InitializeComponent();
             telaSpikes = _telaSpikes;
 
+            // Generate the 15 texture sequence
             generateSequence();
 
             testStep = test_step.STOPPED;
             Console.WriteLine(telaSpikes.th.IsAlive.ToString());
             telaSpikes.testProtocolOn = true;
-            initThreadProgBar();
-            if(activeProgBar)
-            {
-                increment_progBar.Start();
-                increment_progBar.Suspend();
-            }
-
         }
         #endregion
 
+        // Event called when the Start button is pressed
         private void button_start_Click(object sender, EventArgs e)
         {
             if (testStep == test_step.STOPPED)
             {
-                button_start.Visible = false;
-                testStep = test_step.TEXTURE_IMAGES;
-                screenState = screen_states.COUNTDOWN;
-                sequenceIndex = 1;
-                updateTexture(sequenceIndex);
-                showCountDown(5);
+                button_start.Visible = false;   // Hide the button
+                testStep = test_step.TEXTURE_IMAGES;    // Change the stimulation state
+                screenState = screen_states.COUNTDOWN;  // Change the screen state
+                sequenceIndex = 1;  // Set the first texture of the sequence
+                updateTexture(sequenceIndex);   // Transfer the spike data to uC
+                showCountDown(5);   // Start the countdown
 
-                button_status.Focus();
+                button_status.Focus();  // Focus on a hidden button
             }
         }
 
@@ -317,13 +333,6 @@ namespace Eletroestimulador_v02
                 label_countDown.Visible = true;
                 label_countDown.Text = "+";
 
-                if (activeProgBar)
-                {
-                    progressBar_cross.Visible = true;
-                    progressBar_cross.Value = 0;
-                    increment_progBar.Resume();
-                }
-
                 timer1.Start(); // Inicia o timer de 7.3 s
 
                 label_counter.Text = (textureSeqIndex + 1).ToString();
@@ -370,12 +379,6 @@ namespace Eletroestimulador_v02
                     arrowPressedArr[textureSeqIndex] = pressedKey;
                 else
                     arrowPressedArr[textureSeqIndex] = "NULL";
-
-                if (activeProgBar)
-                {
-                    increment_progBar.Suspend();
-                    progressBar_cross.Visible = false;
-                }
 
                 if (textureSeqIndex >= (texSequence.Length - 1))
                 {
@@ -425,58 +428,6 @@ namespace Eletroestimulador_v02
                     break;
             }
         }
-
-        
-
-        #region Functions relating to the Progress Bar
-
-        private void initThreadProgBar()
-        {
-            increment_progBar = new Thread(incrementProgBarRoutine);
-            increment_progBar.IsBackground = true;
-        }
-
-        private void incrementProgBarRoutine()
-        {
-            Stopwatch interval_progBar = new Stopwatch();
-            long nanosecPerTick_progBar = (1000L * 1000L * 1000L) / Stopwatch.Frequency;
-            long elapsed = 0;
-
-            interval_progBar.Start();
-            while(true)
-            {
-                if (interval_progBar.ElapsedMilliseconds >= 100)
-                {
-                    interval_progBar.Reset();
-                    interval_progBar.Start();
-                    incrementProgBar(110);
-                }
-            }
-            
-        }
-
-        private delegate void incrementProgBarDelegate(int increment);
-
-        private void incrementProgBar(int increment)
-        {
-            // Caso a thread principal esteja usando a trackbar, ele invoca o delegado para que ele seja alterado
-            if (this.progressBar_cross.InvokeRequired)
-            {
-                object[] args = new object[] { increment };
-                incrementProgBarDelegate incrementProgBarDelegate = incPB;
-                this.Invoke(incrementProgBarDelegate, args);
-            }
-            // Caso contrário, apenas muda o botão
-            else
-                incPB(increment);
-        }
-
-        private void incPB(int increment)
-        {
-            progressBar_cross.Increment(increment);
-        }
-
-        #endregion
 
         private void button_status_PreviewKeyDown(object sender, PreviewKeyDownEventArgs e)
         {

@@ -19,54 +19,38 @@ namespace Eletroestimulador_v02
     public partial class TelaMain : Form
     {
         // Dados da comunicação serial
-        private string busDescriptionESP = "CP2102 USB to UART Bridge Controller";
+        private string busDescriptionESP = "CP2102 USB to UART Bridge Controller";  // ESP32 Bus description (string that will
+                                                                                    // be searched to identify the ESP32
         private SerialPort ESPSerial;
         private bool serialConectada = false;
 
-        private List<TextBox> textBoxes = new List<TextBox>();
+        private List<TextBox> textBoxes = new List<TextBox>();  // List to store the textboxes
 
+        // Stimulation states
         private enum estados_estimulacao
         {
-            ATIVO,
-            ATUALIZADO,
-            DESATUALIZADO
+            ATIVO,          // Active
+            ATUALIZADO,     // Updated
+            DESATUALIZADO   // Not updated
         }
 
+        // Set the initial state
         estados_estimulacao estadoAtual = estados_estimulacao.DESATUALIZADO;
 
+        // Thread to control the data flow through serial port
         Thread th;
 
         public TelaMain()
         {
             InitializeComponent();
 
+            // Control the activation of the parameters exclusive to square wave (pulse width)
             if (radioButton_tipoQuadrada.Checked)
                 ativaOndaQ(true);
             else
                 ativaOndaQ(false);
 
-            adicionaTBs();
-        }
-
-        private void fechaApp(object sender, FormClosedEventArgs e)
-        {
-            Application.Exit();
-        }
-
-        private void radioButton_tipoQuadrada_CheckedChanged(object sender, EventArgs e)
-        {
-            if (radioButton_tipoQuadrada.Checked)
-                ativaOndaQ(true);
-            else
-                ativaOndaQ(false);
-        }
-
-        private void ativaOndaQ(bool ativa)
-        {
-            label_pulseWd.Enabled = ativa;
-            label_usPulseWd.Enabled = ativa;
-            textBox_pulseWd.Enabled = ativa;
-
+            adicionaTBs();  // Include the textboxes in the list
         }
 
         #region Funções de configuração da serial e thread de leitura
@@ -113,13 +97,13 @@ namespace Eletroestimulador_v02
                     }
 
                     
-
+                    // Retorno da leitura de corrente de saída
                     else if(split[0].Equals("ANL"))
                     {
                         double ANLvalue = (Convert.ToInt32(split[1]) * 3.3) / 4095; // Convert from bits to Volts
-                        ANLvalue /= 1000;   // Convert from Volts to Ampères
+                        ANLvalue /= 1000;       // Convert from Volts to Ampères
                         ANLvalue *= 1000000;    // Convert from Ampères to μA
-                        changeLabelAnalog(Convert.ToInt32(ANLvalue).ToString() + " μA");
+                        changeLabelAnalog(Convert.ToInt32(ANLvalue).ToString() + " μA"); // Change the label
                     }
                 }
             }
@@ -129,6 +113,7 @@ namespace Eletroestimulador_v02
         //  precisa de um delegado que solicita essa mudança para a thread principal, evitando uma exceção
         private delegate void changeStateDelegate(string newLabel);
 
+        // Função que chama o delegado para alterar o parâmetro, caso necessário
         private void changeState(string newLabel)
         {
             // Caso a thread principal esteja usando o botão, ele invoca o delegado para que ele seja alterado
@@ -151,33 +136,6 @@ namespace Eletroestimulador_v02
             button_iniciar.Text = newLabel;
         }
 
-        #region AnalogDelegate
-        // Como a thread de leitura tenta alterar um parâmetro da thread principal (que rege o form) ela
-        //  precisa de um delegado que solicita essa mudança para a thread principal, evitando uma exceção
-        private delegate void changeLabelAnalogDelegate(string newLabel);
-
-        private void changeLabelAnalog(string newLabel)
-        {
-            // Caso a thread principal esteja usando o botão, ele invoca o delegado para que ele seja alterado
-            if (this.label_ANLvalue.InvokeRequired)
-            {
-                object[] args = new object[] { newLabel };
-                changeLabelAnalogDelegate changeLabelAnalog_Delegate = changeLabelANL;
-                this.Invoke(changeLabelAnalog_Delegate, args);
-            }
-            // Caso contrário, apenas muda o botão
-            else
-                changeLabelANL(newLabel);
-        }
-
-        // Função que ativa e desativa o botão de 'Parar'
-        // >> Ressaltando que existe um evento ligado à mudança da label do botão, que altera a 
-        //      máquina de estados do sistema
-        void changeLabelANL(string newLabel)
-        {
-            label_ANLvalue.Text = newLabel;
-        }
-        #endregion
 
         /**
         * Essa função procura nos dispositivos do Windows um que possua o nome definido pelo barramento
@@ -208,6 +166,7 @@ namespace Eletroestimulador_v02
                 }
             }
 
+            // Mostra mensagem de erro caso o dispositivo não tenha sido encontrado
             if (!deviceFound)
             {
                 MessageBox.Show("Dispositivo " + busDescriptionESP + " não encontrado!", "Erro",
@@ -236,6 +195,36 @@ namespace Eletroestimulador_v02
         }
 
         #endregion
+
+        // Função de delegado para alterar a label que indica a corrente de saída
+        #region AnalogDelegate
+        // Como a thread de leitura tenta alterar um parâmetro da thread principal (que rege o form) ela
+        //  precisa de um delegado que solicita essa mudança para a thread principal, evitando uma exceção
+        private delegate void changeLabelAnalogDelegate(string newLabel);
+
+        private void changeLabelAnalog(string newLabel)
+        {
+            // Caso a thread principal esteja usando o botão, ele invoca o delegado para que ele seja alterado
+            if (this.label_ANLvalue.InvokeRequired)
+            {
+                object[] args = new object[] { newLabel };
+                changeLabelAnalogDelegate changeLabelAnalog_Delegate = changeLabelANL;
+                this.Invoke(changeLabelAnalog_Delegate, args);
+            }
+            // Caso contrário, apenas muda o botão
+            else
+                changeLabelANL(newLabel);
+        }
+
+        // Função que ativa e desativa o botão de 'Parar'
+        // >> Ressaltando que existe um evento ligado à mudança da label do botão, que altera a 
+        //      máquina de estados do sistema
+        void changeLabelANL(string newLabel)
+        {
+            label_ANLvalue.Text = newLabel;
+        }
+        #endregion
+
 
         /*
          *  Fluxo de funcionamento do envio de dados e mudança de estados
@@ -455,6 +444,12 @@ namespace Eletroestimulador_v02
             textBoxes.Add(textBox_pulseWd);
         }
 
+        // Closes the application (not just the window)
+        private void fechaApp(object sender, FormClosedEventArgs e)
+        {
+            Application.Exit();
+        }
+
 
         /*
          * Confere os radiobuttons relacionados à forma de onda e retorna o código de protocolo 
@@ -502,15 +497,34 @@ namespace Eletroestimulador_v02
                 tb.Enabled = enabled;
         }
 
+        // Event that is called when the radio buttons check change
+        private void radioButton_tipoQuadrada_CheckedChanged(object sender, EventArgs e)
+        {
+            // Control the activation of the parameters exclusive to square wave (pulse width)
+            if (radioButton_tipoQuadrada.Checked)
+                ativaOndaQ(true);
+            else
+                ativaOndaQ(false);
+        }
+
+        // Control the activation of the parameters exclusive to square wave (pulse width)
+        private void ativaOndaQ(bool ativa)
+        {
+            label_pulseWd.Enabled = ativa;
+            label_usPulseWd.Enabled = ativa;
+            textBox_pulseWd.Enabled = ativa;
+
+        }
+
         #endregion
 
-        
+
         /*
          * Sempre que o texto de uma texbox é alterado, significa que os dados presentes no ESP estão
          * desatualizados em relação aos presentes nas textboxes. Portanto, sempre que ocorre uma 
          * alteração nas mesmas, o botão Iniciar muda sua label para Atualizar e o sistema muda seu
          * estado para DESATUALIZADO.
-         */ 
+         */
         #region Eventos das textboxes para avisar que houve alterações
 
         private void textBox_amplitude_TextChanged(object sender, EventArgs e)
