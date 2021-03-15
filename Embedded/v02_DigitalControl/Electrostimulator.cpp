@@ -337,7 +337,8 @@ void Electrostimulator::geraOndaQuad(estados *estadoAtual)
 
     stimulatorState(ON);
     timerAlarmWrite(timer_Onda, nTicks, true);
-    enableTimers(true);
+    timerAlarmEnable(timer_Onda);
+    //enableTimers(true);
     
 
     // Só sai do while se receber o comando STO ou atingir o tempo máximo
@@ -348,8 +349,17 @@ void Electrostimulator::geraOndaQuad(estados *estadoAtual)
 
         if(interrompeu)
         {
+            if(!ondaQ[waveIndex]) timerAlarmDisable(timer_Int);
+
+            if(firstEdge)
+            {
+                firstEdge = false;
+                timerRestart(timer_Int);
+                if(ondaQ[waveIndex]) timerAlarmEnable(timer_Int);
+            }
+                
             // Escreve na saída do DAC
-            dacWrite(dac_pin, (ondaQ[waveIndex]) ? controle : OFF);
+            dacWrite(dac_pin, ((ondaQ[waveIndex]) ? controle : OFF));
 
             // Reset na variável de interrupção
             portENTER_CRITICAL(&timerMux);
@@ -359,15 +369,41 @@ void Electrostimulator::geraOndaQuad(estados *estadoAtual)
             // Soma os ticks passados ao total de ticks da duração total
             countTotal += (uint32_t)nTicks;
 
+            bool oldState = (bool)ondaQ[waveIndex];
+
             if(waveIndex == SQUARE_WAVE_RES)
                 waveIndex = 0;
             else
                 waveIndex++;
 
+            if(!firstEdge)
+                firstEdge = ((ondaQ[waveIndex] == 1) && !oldState);
+
+            
+            
+        }
+/*
+        if( (millis() - tempo_teste > 500) && ondaQ[waveIndex])
+        {
+            uint8_t reads[2];
+            reads[0] = readADC(adc_sp_pin);
+            reads[1] = readADC(adc_curr_pin);
+
             Serial.write("Controle = ");
             Serial.println(controle);
+            Serial.write("Set Point = ");
+            Serial.println(reads[0]);
+            Serial.write("Corrente lida = ");
+            Serial.println(reads[1]);
+            Serial.write("mInt = ");
+            Serial.println(mInt);
+            Serial.write("mProp = ");
+            Serial.println(mProp);
+            Serial.write("Erro = ");
+            Serial.println(erro);
+            tempo_teste = millis();
         }
-
+*/
         if(*estadoAtual != EE_SQUARE)
         {
             enableTimers(false);
@@ -420,6 +456,16 @@ void Electrostimulator::setupOndaQuad()
     Serial.println(period);
     Serial.write("samples = ");
     Serial.println(samples);
+
+    Serial.write("i_amp = ");
+    Serial.println(i_amp);
+    Serial.write("std_resolution = ");
+    Serial.println(std_resolution);
+    Serial.write("set_current = ");
+    Serial.println(set_current);
+    Serial.write("realADC_res = ");
+    Serial.println(REAL_ADC_RES);
+    
 
     for(int i = 0; i < SQUARE_WAVE_RES; i++)
     {
@@ -647,25 +693,26 @@ void Electrostimulator::stimulatorState(bool turnON)
 }
 
 // Lê ADC_AVG vezes uma entrada analógica e faz a média desse valor
-int16_t Electrostimulator::readADC(uint8_t adc_pin)
+uint8_t Electrostimulator::readADC(uint8_t adc_pin)
 {
-    int16_t sum;
+    uint16_t sum = 0;
     for(int i = 0; i < ADC_AVG; i++)
-        sum += analogRead(adc_pin);
+        sum += analogRead(adc_pin); // Converte a resolução de 9 bits pra 8
     sum /= ADC_AVG;
-    return sum;
+    return (uint8_t)(sum >> 1);
 }
 
 // Altera a variável de controle
 void Electrostimulator::calc_controle()
 {
-    int16_t erro;// = (float)((!digitalRead(switch_pin)) ? (readADC(adc_sp_pin) - readADC(adc_curr_pin)) : (set_current - readADC(adc_curr_pin)));
+    //int16_t erro;// = (float)((!digitalRead(switch_pin)) ? (readADC(adc_sp_pin) - readADC(adc_curr_pin)) : (set_current - readADC(adc_curr_pin)));
     if(!digitalRead(switch_pin))
-        erro = readADC(adc_sp_pin) - readADC(adc_curr_pin);
+        erro = (int16_t)analogRead(adc_sp_pin) - (int16_t)readADC(adc_curr_pin);
     else
-        erro = set_current - readADC(adc_curr_pin);
-    mProp = erro/iKProp;
-    mInt += erro/iKInt;
+        erro = (int16_t)set_current - (int16_t)readADC(adc_curr_pin);
+    mProp = (int16_t)(float(erro) * KProp);
+    mInt += (int16_t)(float(erro) * KInt);
+    mInt = constrain(mInt, -100, 255);
     controle = setBound(mProp + mInt);
 
     //Serial.write("Controle = ");

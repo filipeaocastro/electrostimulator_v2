@@ -11,12 +11,14 @@
 #define PWM_FREQ 80000      // Oscilator frequency
 #define PWM_DUTYCICLE 127   // 50% duty cicle
 
-#define ADC_RESOLUTION 8
+#define ADC_RESOLUTION 9
+#define REAL_ADC_RES (ADC_RESOLUTION - 1)
+
 #define ADC_AVG 3
 
 #define TICKS_INT 100
 
-#define SQUARE_WAVE_RES 255 // Antes era 50
+#define SQUARE_WAVE_RES 150 // Antes era 50
 #define SPIKE_DATA_LENGTH 8000
 
 #define CORRENTE_MAX 5000 // Valor máximo de corrente, em uA
@@ -65,7 +67,7 @@ class Electrostimulator
     uint16_t valor_DAC = 0;
     uint16_t set_current = 0;
 
-    const uint16_t std_resolution = pow(2, ADC_RESOLUTION) - 1;
+    const uint16_t std_resolution = (0x0001 << REAL_ADC_RES) - 0x0001;
 
     bool ondaQ[SQUARE_WAVE_RES] = {0}; 
 
@@ -78,6 +80,8 @@ class Electrostimulator
     uint16_t total_spikes = 0;
     uint8_t intrrpts_spk_on = 0; 
     bool spike_off = true;
+
+    bool amp_mudou = false;
 
     
     //Variáveis do timer
@@ -97,17 +101,20 @@ class Electrostimulator
     volatile bool timer_on = false;
 
     // Variáveis do controle PI
-    const float KInt = 0.1, KProp = 0.2;
+    const float KInt = 0.09, KProp = 0.15;    // KInt = 0.1, KProp = 0.2; //Menor valor: 0.004 --> 1/0.004 = 250
     const uint8_t iKInt = (uint8_t)(1/KInt);
     const uint8_t iKProp = (uint8_t)(1/KProp);
     int16_t mInt = 0, mProp = 0;
     uint8_t controle = 0;
+    int16_t erro;
+
+    bool firstEdge = false;
 
 
     const uint8_t dacMin = 0, dacMax = 255;
 
     void calc_controle();
-    int16_t readADC(uint8_t adc_pin);
+    uint8_t readADC(uint8_t adc_pin);
     uint8_t setBound(int16_t val);
     
 
