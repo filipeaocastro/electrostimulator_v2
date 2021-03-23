@@ -114,7 +114,7 @@
             this.Controls.Add(this.button_start);
             this.Controls.Add(this.pictureBox_textura);
             this.Controls.Add(this.button_status);
-            this.Cursor = System.Windows.Forms.Cursors.Cross;
+            this.Cursor = System.Windows.Forms.Cursors.Default;
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
             this.Name = "TestProtocol";
             this.Text = "TestProtocol";
