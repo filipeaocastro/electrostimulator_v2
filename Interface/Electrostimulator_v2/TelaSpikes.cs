@@ -31,7 +31,6 @@ namespace Eletroestimulador_v02
         private long tempoDecorrido = 0;
 
         private int amplitude = 3000;
-        private int iDirection = 1; // 0 = Anodic, 1 = Cathodic
         public int textureNumber = 0; // 0 = random
         private int spk_width = 1000;
 
@@ -65,9 +64,6 @@ namespace Eletroestimulador_v02
         private TestProtocol testProtocol;
         public bool testProtocolOn = false;
         public int stateProtocol = 0;
-
-        // Variáveis para salvar no arquivo txt
-        private int nTextura = 0;   // Numero da textura
 
         private enum estados_estimulacao
         {
@@ -418,26 +414,6 @@ namespace Eletroestimulador_v02
                 button_update.Text = "Start";
         }
 
-        private void initTimer(bool timerOn)
-        {
-            /*
-            if (timerOn)
-            {
-                index_spk = 0;
-                if (th.ThreadState == ThreadState.Running)
-                    th.Suspend();
-
-                timer_spk.Enabled = true;
-            }
-            else
-            {
-                timer_spk.Enabled = false;
-                if(th.ThreadState == ThreadState.Suspended)
-                    th.Resume();
-            }*/
-            
-        }
-
         #region Interface functions
 
         private void mudaLabelAtualizar()
@@ -488,17 +464,22 @@ namespace Eletroestimulador_v02
         }
 
         #endregion
-
+        /*
+         * Carrega a pasta com as texturas de spikes
+         */
         private void button_loadTex_Click(object sender, EventArgs e)
         {
             FolderBrowserDialog = new FolderBrowserDialog();
             if (Environment.UserName == "Filipe Augusto")
                 FolderBrowserDialog.SelectedPath = "C:\\Users\\Filipe Augusto\\Google Drive\\UFU\\BioLab\\TCC\\texturas";
-            //FolderBrowserDialog.Title = "Selecione a pasta";
-            //openFileDialog1.Filter = "Text files(*.txt)|*.txt";
+            else
+                FolderBrowserDialog.SelectedPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            FolderBrowserDialog.Description = "Selecione a pasta com as texturas" + Environment.NewLine 
+                + "Cada textura deve ser nomeada 1.txt, 2.txt, ... até 9.txt";
+
+            // Abre o diálogo para escolha da pasta
             if (FolderBrowserDialog.ShowDialog() == DialogResult.OK)
             {
-                string reading;
                 try
                 {
                     var folderPath = FolderBrowserDialog.SelectedPath;
@@ -510,45 +491,10 @@ namespace Eletroestimulador_v02
                         isTexture(str);
                     }
 
-                    /*
-                    totalTextures = files.Length;
-
-
-                    rand = new Random();
-                    aleatTexture = rand.Next(1, totalTextures + 1);
-                    //MessageBox.Show(aleatTexture.ToString());
-                    var sr = new StreamReader(files[aleatTexture - 1]);
-                    txtPath = files[aleatTexture - 1];
-                    
-                    Console.WriteLine(files[aleatTexture - 1]);
-                    //MessageBox.Show(sr.ReadToEnd());
-
-
-                    reading = sr.ReadToEnd();
-                    reading = reading.Trim();
-
-                    for (int i = 0; i < reading.Length; i++)
-                    {
-                        if (reading[i] != ',')
-                            spikesTxt += reading[i];
-                    }
-
-                    spikes = new bool[spikesTxt.Length];*/
-
-                    // TEST
-                    //readConf();
-                    //updateTexture();
-
-                    // END TEST
-
-
-
-                    /* ATÉ AQUI */
-
                     button_toggleVisible.Enabled = true;
                     button_connectUc.Enabled = true;
                     button_loadTex.Enabled = false;
-                    spikeParameters = new spkParameters(amplitude, iDirection, totalTextures, spk_width, textureNumber);
+                    spikeParameters = new spkParameters(amplitude, totalTextures, spk_width, textureNumber);
                 }
                 catch (SecurityException ex)
                 {
@@ -661,7 +607,7 @@ namespace Eletroestimulador_v02
                 {
                     confFileOutputW = new StreamWriter(confFilePath);
                     confFileOutputW.WriteLine("Amplitude\t3000" + Environment.NewLine);
-                    confFileOutputW.WriteLine("Current_Direction\tCAT" + Environment.NewLine);
+                    //confFileOutputW.WriteLine("Current_Direction\tCAT" + Environment.NewLine);
                     confFileOutputW.WriteLine("Texture\t0" + Environment.NewLine);
                     confFileOutputW.WriteLine("Width\t1000" + Environment.NewLine);
                     confFileOutputW.Close();
@@ -691,13 +637,13 @@ namespace Eletroestimulador_v02
                 string[] vs1 = str.Split('\t');
                 if (vs1[0] == "Amplitude")
                     amplitude = Convert.ToInt32(vs1[1]);
-                if (vs1[0] == "Current_Direction")
+               /* if (vs1[0] == "Current_Direction")
                 {
                     if (vs1[1] == "CAT")
                         iDirection = 1;
                     else
                         iDirection = 0;
-                }
+                }*/
                 if(vs1[0] == "Texture")
                 {
                     textureNumber = Convert.ToInt32(vs1[1]);
@@ -709,84 +655,95 @@ namespace Eletroestimulador_v02
                 }
             }
         }
-
+        // Atualiza o arquivo de textura a ser carregado para o uC
         public void updateTexture(int texNumber)
         {
             string texData = "";
             int aleatTex = texNumber;
 
+            // Caso textureNumber seja 0, a textura a ser carregada deve ser selecionada de forma aleatória
             if(textureNumber == 0)
             {
                 rand = new Random();
                 aleatTex = rand.Next(1, totalTextures + 1);
             }
-            foreach (string[,] str in textureList)
-            {
+
+            // Imprime no console os números de texturas disponíveis
+            foreach (string[,] str in textureList)  
                 Console.WriteLine("Texture: [ " + str[0, 1] + " ]");
-            }
+            
 
-
+            // Seleciona da lista o arquivo de textura definido pelo usuário (ou de forma aleatória)
+            // e salva seu conteúdo em texData
             foreach (string [,] str in textureList)
-            {
                 if (str[0, 1] == aleatTex.ToString())
                 {
                     texData = str[0, 0];
                     break;
                 }
-            }
+            
+            spikesTxt = ""; // Variável onde será salvo o conteúdo da textura sem vírgulas
 
-            spikesTxt = "";
+            // Percorre o conteúdo de texData, remove as vírgulas e salva os números restantes em spikesTxt
             for (int i = 0; i < texData.Length; i++)
-            {
                 if (texData[i] != ',')
                     spikesTxt += texData[i];
-            }
-
-            //spikes = new bool[spikesTxt.Length];
         }
 
         public void sendData()
         {
             ESPSerial.WriteLine(Protocolos.amplitude + amplitude.ToString());
             ESPSerial.WriteLine(Protocolos.larguraPulso + spk_width.ToString());
+            /*
             if(iDirection == 0)
                 ESPSerial.WriteLine(Protocolos.iDirection_anodic);
             else if(iDirection == 1)
                 ESPSerial.WriteLine(Protocolos.iDirection_cathodic);
-
+*/
             Console.WriteLine(Protocolos.amplitude + amplitude.ToString());
             Console.WriteLine(Protocolos.larguraPulso + spk_width.ToString());
+            /*
             if (iDirection == 0)
                 Console.WriteLine(Protocolos.iDirection_anodic);
             else if (iDirection == 1)
                 Console.WriteLine(Protocolos.iDirection_cathodic);
+                */
         }
 
+        /*
+         * Essa função verifica se a string dada como entrada é um arquivo de textura. Caso seja, o arquivo de
+         * textura é lido e seu conteúdo é salvo em "textureList", que contém tanto o conteúdo de cada textura
+         * quanto seu número.
+         * 
+         * TODOS os arquivos de textura devem se chamar "n.txt", onde n é um algarismo de 1 a 9 que representa a 
+         * textura.
+         */
         private void isTexture(string path)
         {
-            //List<string[][]> vs =  
-            bool isTexture = false;
             string number;
             try
             {
+                // Confere se é um arquivo .txt
                 if (path.EndsWith(".txt"))
                 {
+                    // Salva o número da textura do nome do arquivo
                     number = path[path.Length - 5].ToString();
 
                     for (int i = 1; i < 9; i++)
                     {
+                        // Confere se é um número de 1 a 9
                         if (i == Convert.ToInt32(number))
                         {
                             string textureData;
                             string[,] listObj;
-                            isTexture = true;
-                            totalTextures++;
-                            var sr = new StreamReader(path);
-
+                            
+                            totalTextures++;    // Incrementa o número total de texturas
+                            var sr = new StreamReader(path);    // Abre o arquivo de textura
                             textureData = sr.ReadToEnd();
-                            textureData = textureData.Trim();
+                            textureData = textureData.Trim();   // Remove espaços em branco
+                            // Salva o conteúdo da textura e seu número em listObj
                             listObj = new string[1, 2] { { textureData, number.ToString()} };
-                            textureList.Add(listObj);
+                            textureList.Add(listObj);   // Adiciona à lista de texturas
                         }
                     }
                 }
@@ -796,17 +753,16 @@ namespace Eletroestimulador_v02
                 MessageBox.Show(ex.ToString(), "Error",
                         MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
-
-            
         }
 
         private void button_initProtocol_Click(object sender, EventArgs e)
         {
             //if(estadoAtual == estados_estimulacao.DESATUALIZADO)
             //    button_initProtocol.PerformClick();
-            this.Hide();
+            
             testProtocol = new TestProtocol(this);
             testProtocol.Show();
+            this.Hide();
         }
     }
 }

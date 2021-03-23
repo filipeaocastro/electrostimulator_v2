@@ -22,7 +22,7 @@ using System.IO;
  *  stimualtion is over, it is made an interval before the next texture. This process repeats 3 times (one for each texture).
  *  Then, after a bigger interval, a cross appears on the screen with a stimulation in parallel. This process is repeated 15
  *  times with an interval of 5 to 7 seconds between each one. Each stimulation is cessed when the user press a key (1, 2 or 3)
- *  or after 7.3 seconds (the duration of each texture).
+ *  or after 6 seconds (the duration of each texture).
  *  At the end is generated a file with all information about the relation of the texture order, key pressed, duration, etc.
  *  
  * 
@@ -42,7 +42,7 @@ namespace Eletroestimulador_v02
         private int countdown = 0;
         private string pressedKey;
 
-        private bool activeProgBar = false;
+        private readonly int texture_duration = 6000;
         
 
         // Stopwatch to compute the elapsed time
@@ -111,7 +111,10 @@ namespace Eletroestimulador_v02
         }
         #endregion
 
-        // Event called when the Start button is pressed
+        /*
+         * Event called whrn the button 'Start' is pressed. 
+         * It changes the system's states in order to start the protocol.
+         */
         private void button_start_Click(object sender, EventArgs e)
         {
             if (testStep == test_step.STOPPED)
@@ -127,127 +130,141 @@ namespace Eletroestimulador_v02
             }
         }
 
+        // Function to fetch the first three textures and distribute them equally in a 15 positions sequence
         private void generateSequence()
         {
-            int[,] positions = new int[3, 5];
+            int[,] positions = new int[3, 5];   // Matrix to store the sequence (lines = texture number, 
+                                                    // columns = its position in the 15 positions vector)
             int cont;
 
-            // Positions matrix:
-            // Texture 1: 0 0 0 0 0
-            // Texture 2: 0 0 0 0 0
-            // Texture 3: 0 0 0 0 0
+            // Fill the array with '15' in every position (since the numbers to be placed in the array vary 
+            //  from 0 to 14)
+            for (int i = 0; i < 3; i++)
+                for (int j = 0; j < 5; j++)
+                    positions[i, j] = 15;
 
+            // Positions matrix:
+            // Texture 1: 15 15 15 15
+            // Texture 2: 15 15 15 15
+            // Texture 3: 15 15 15 15
+
+            // Iterate through the matrix, generating random numbers (0-14) and checking for repetitions
             Random rand = new Random();
             for (int i = 0; i < 3; i++)
-            {
                 for (int j = 0; j < 5; j++)
                 {
-                    cont = 0;
-                    positions[i, j] = rand.Next(0, 15);
-
-
+                    positions[i, j] = rand.Next(0, 15); // Fill the [i,j] position with a random number from 0 to 14
+                    cont = 0;   // Set the counter to zero
+                    
+                    // Check the matrix for repetitions of the number stored in [i, j]
                     foreach (int o in positions)
-                    {
-                        if (o == positions[i, j])
+                        if (o == positions[i, j])   // There is a repetition
                             cont++;
-                    }
 
-                    if (cont > 1)
-                        j--;
+                    // Go back one iteration
+                    if (cont > 1)   
+                        j--;     
                 }
-            }
 
-
+            // Prints in the console the matrix
             Console.Write("Positions = [");
             foreach (int i in positions)
-            {
                 Console.Write(i.ToString() + ", ");
-            }
             Console.WriteLine("]");
 
+            // Fill the texSequence vector in a way that the lines indicate the texture (1-3) and the 
+            //  value in the matrix define the position of each one
+            // Example: positions[0, 4] = 5, that is: line 0 = texture 1 and the number 5 indicates its index in texSequence
+            // Therefore: texSequence[5] = 1
             for (int i = 0; i < 3; i++)
-            {
                 for (int j = 0; j < 5; j++)
-                {
                     texSequence[positions[i, j]] = i + 1;
-                }
-            }
 
+            // Prints the resulting sequence in the console
             Console.Write("texSequence = [");
             foreach (int i in texSequence)
-            {
                 Console.Write(i.ToString() + ", ");
-            }
+            
             Console.WriteLine("]");
-
-
-
         }
 
         #region Countdown and timer functions
 
+        /*
+         *  Function that runs a countdown between stimulations. It doesn't really show the countdown to the user
+         *  
+         *  count = number of seconds of the countdown
+         */
         private void showCountDown(int count)
         {
-            countdown = count;
-            label_countDown.Text = countdown.ToString();
-            //label_countDown.Visible = true;
-            screenState = screen_states.COUNTDOWN;
-            timer1.Interval = 1000; // voltar pra 1000
-            timer1.Enabled = true;
-            timer1.Start();
-
+            countdown = count;  // Set the global variable 'countdown'
+            screenState = screen_states.COUNTDOWN;  // Set the screen to countdown mode
+            timer1.Interval = 1000; // Interval between each tick (ms)
+            timer1.Enabled = true;  // Enable the timer
+            timer1.Start(); // Start the countdown
         }
 
+        /*
+         * The function called each time a tick occurs in the timer1
+         * 
+         * If the screen is in COUNTDOWN state, it decreases the 'countdown' variable each tick.
+         * When it reached 0, it starts an stimulation according to the 'test_step' state
+         * 
+         * If the screen is in IMAGE state, it removes the image from the screen and restart the countdown
+         */
         private void timer1_Tick(object sender, EventArgs e)
         {
             switch (screenState)
             {
+                // COUNTDOWN is the screen state where the screen is black
                 case screen_states.COUNTDOWN:
                     countdown--;
                     if (countdown == 0)
                     {
                         timer1.Stop();
-
-                        if (testStep == test_step.TEXTURE_IMAGES)
+                        if (testStep == test_step.TEXTURE_IMAGES) // Step of showing the textures with images
                         {
-                            label_countDown.Visible = false;
-                            screenState = screen_states.IMAGE;
-                            startStimulation();
-                            showTextures();
+                            screenState = screen_states.IMAGE;  // Change the scren state
+                            startStimulation(); // Start the stimulation with the texture image
+                            showTextures(); // Show the texture image
                         }
-                        else if (testStep == test_step.WAITING_FOR_START)
+
+                        // After showing images and before starting the 15 stimualtions sequence
+                        else if (testStep == test_step.WAITING_FOR_START) 
                         {
-                            testStep = test_step.STIMULATION_ON;
+                            testStep = test_step.STIMULATION_ON;    // Change test step
                             Console.WriteLine("Before start");
-                            startStimulation();
+                            startStimulation(); // Start the first stimulation of the 15 sequence
                             Console.WriteLine("Started");
                         }
+
+                        // The 15 sequence has already started
                         else if (testStep == test_step.STIMULATION_ON)
                         {
                             startStimulation();
                         }
-
                         break;
                     }
-                    label_countDown.Text = countdown.ToString();
                     break;
+                
+                case screen_states.IMAGE:   // When showing the texture images
+                    endStimulation(false);  // Stop the stimulation
 
-                case screen_states.IMAGE:
-                    endStimulation(false);
+                    // If it is the last image, pass to the next step of the protocol
                     if (sequenceIndex == 3)
                     {
-                        sequenceIndex = 0;
+                        sequenceIndex = 0;  // Reset the sequence
                         timer1.Stop();
-                        testStep = test_step.WAITING_FOR_START;
-                        pictureBox_textura.Image = null;
-                        screenState = screen_states.COUNTDOWN;
-                        showCountDown(10);
+                        testStep = test_step.WAITING_FOR_START; // Chenge the protocol step
+                        pictureBox_textura.Image = null;    // Removes the image from the screen
+                        screenState = screen_states.COUNTDOWN;  // Updates the screen state
+                        showCountDown(10);  // Start a 10 seconds countdown
                         sequenceIndex = 0;
-                        updateTexture(0);
-
+                        updateTexture(0);   // Load the texture into the uC
                         break;
                     }
 
+                    // If its not the last image, set a  seconds countdown before the next image
                     timer1.Stop();
                     timer1.Enabled = false;
                     screenState = screen_states.COUNTDOWN;
@@ -257,10 +274,9 @@ namespace Eletroestimulador_v02
                     sequenceIndex++;
                     break;
 
-                case screen_states.CROSS:
-
-                    endStimulation(false);
                     
+                case screen_states.CROSS:   // The 15 sequence stimulations
+                    endStimulation(false);  // Stop the stimulation and prepare for the next
                     break;
 
             }
@@ -270,38 +286,57 @@ namespace Eletroestimulador_v02
 
         #region Show textures images
 
+        /*
+         * Shows a texture's image for 'texture_duration' seconds
+         */
         private void showTextures()
         {
             timer1.Enabled = false;
-            timer1.Interval = 7000; // voltar pra 7000
+            timer1.Interval = texture_duration; // voltar pra 7000
             showImage(sequenceIndex);
             timer1.Enabled = true;
             timer1.Start();
         }
 
+        /*
+         * Show the image in the screen acconding to the texture number (texNum)
+         */ 
         private void showImage(int texNum)
         {
+            string docPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            string filePath;
+            string fileName = "";
             pictureBox_textura.Visible = true;
+
+            // Select the image name according to the imput number
             switch (texNum)
             {
                 case 1:
-                    pictureBox_textura.Image = Resources.tex1___NEG;
+                    //pictureBox_textura.Image = Resources.tex1___NEG;
+                    fileName = "textures\\1.png";
                     break;
 
                 case 2:
-                    pictureBox_textura.Image = Resources.tex2___NEG;
+                    //pictureBox_textura.Image = Resources.tex2___NEG;
+                    fileName = "textures\\2.png";
                     break;
 
                 case 3:
-                    pictureBox_textura.Image = Resources.tex3___NEG;
+                    //pictureBox_textura.Image = Resources.tex3___NEG;
+                    fileName = "textures\\3.png";
                     break;
             }
+            filePath = Path.Combine(docPath, fileName);
+            pictureBox_textura.Image = Image.FromFile(filePath);    // Shows the image
         }
 
         #endregion
 
         #region start/update/end/finish stimulation
-
+        
+        /*
+         * Starts the Stimulation when the uC is already updated
+         */
         private void startStimulation()
         {
             timer1.Stop();
@@ -313,48 +348,61 @@ namespace Eletroestimulador_v02
                     MessageBoxIcon.Error);
 
                 // ************************** COLOCAR QUE FUNCÃO FINALIZA O PROTOCOLO E FECHA A TELA **********
+                endStimulation(false);
+                Application.Exit();
 
                 return;
             }
 
+            // Set the uC to start the stimulation
             telaSpikes.ESPSerial.WriteLine(Protocolos.iniciar);
 
+            // Wait the uC for confirming the stimulation start
             do
             {
                 checkSerialState();
             } while (serial_States != serial_states.INITIATED);
 
+            // Start the stimulation after the uC confirm
             if (testStep == test_step.STIMULATION_ON)
             {
-                timer1.Interval = 7300;
-                interval.Start();
+                timer1.Interval = texture_duration; // Set the timer for the stimulation duration control
+                interval.Start();   // Start the stopwatch
 
-                screenState = screen_states.CROSS;
+                screenState = screen_states.CROSS;  // Change the screen state to appear the Cross
                 label_countDown.Visible = true;
                 label_countDown.Text = "+";
 
-                timer1.Start(); // Inicia o timer de 7.3 s
-
-                label_counter.Text = (textureSeqIndex + 1).ToString();
+                timer1.Start(); //Start the timer for the stimulation of 'texture_duration' seconds
             }
-
-            
-
         }
 
+        /*
+         * Updates the uC with the desired texture. 
+         * When the parameter is 0, it uploads the texture corresponding to 'texSequence[textureSeqIndex]'
+         * Else, it update the texture corresponding to the parameter (needs to be from 1-3)
+         */
         private void updateTexture(int num)
         {
+            // When 0, it follows the sequence defined in texSequence
             if(num == 0)
                 telaSpikes.updateTexture(texSequence[textureSeqIndex]);
+            // Else, it selects the texture corresponding the number 'num'
             else
                 telaSpikes.updateTexture(num);
-            telaSpikes.sendData();
-            telaSpikes.spikeTransfer();
-            telaSpikes.ESPSerial.WriteLine(Protocolos.wf_spike);
+
+            telaSpikes.sendData();  // Send stimulation data to uC
+            telaSpikes.spikeTransfer(); // Send the spikes
+            telaSpikes.ESPSerial.WriteLine(Protocolos.wf_spike);    // Set SPIKE as the actie waveform
             
             Console.WriteLine("Updated");
         }
 
+        /*
+         * Stop the stimulation.
+         * If it is in the CROSS state, it records the arrow pressed (if there was any) and in the last stimulation
+         * of the sequece it calls the function that generates the results file
+         */
         private void endStimulation(bool arrowPressed)
         {
             if(screenState == screen_states.CROSS)
@@ -367,38 +415,36 @@ namespace Eletroestimulador_v02
                 timer1.Stop();
             }
 
-
             Random rand;
             telaSpikes.ESPSerial.WriteLine(Protocolos.parar);   // Send the command to stop the stimulation
-            serial_States = serial_states.STOPPED;  // Chante de serial state to STOPPED
+            serial_States = serial_states.STOPPED;  // Change the serial state to STOPPED
+            label_countDown.Visible = false;
 
             if(screenState == screen_states.CROSS)
             {
-                
+                // Records the pressed key in the arrowPressedArr array
                 if (arrowPressed)
                     arrowPressedArr[textureSeqIndex] = pressedKey;
                 else
                     arrowPressedArr[textureSeqIndex] = "NULL";
 
+                // In the last position of the sequence, it generates the results file
                 if (textureSeqIndex >= (texSequence.Length - 1))
                 {
                     label_countDown.Text = "STOP";
                     finishProtocol();
                 }
-                else
+                else // Set a new countdown before the next stimulation
                 {
-                    label_countDown.Visible = false;
                     textureSeqIndex++;
                     rand = new Random();
                     showCountDown(rand.Next(5, 8));
-                    updateTexture(0);
+                    updateTexture(0);   // Update the texture in the uC
                 }
             }
-            
-            
-
         }
 
+        // Terminates the protocol by saving the results file and closing the Application
         private void finishProtocol()
         {
             saveOutput();
@@ -527,3 +573,8 @@ namespace Eletroestimulador_v02
         }
     }
 }
+
+/* TO DO
+ * Ver a fonte das imagens de textura
+ * Ver se tem como fazer um jeito pra Ana upar as imagens dela
+ */

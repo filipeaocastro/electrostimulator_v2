@@ -19,10 +19,10 @@ namespace Eletroestimulador_v02
         private string confFilePath;
 
         private int amplitude;
-        private int direction;
+        //private int direction;
         private int stimuliQuantity;
         private int width;
-        private string direction_str;
+        //private string direction_str;
         private int textNumber;
 
         public spkParameters()
@@ -30,12 +30,12 @@ namespace Eletroestimulador_v02
             InitializeComponent();
         }
 
-        public spkParameters(int _amplitude, int _direction, int _stimuliQuantity, int _width, int _textNumber)
+        public spkParameters(int _amplitude, int _stimuliQuantity, int _width, int _textNumber)
         {
             InitializeComponent();
 
             amplitude = _amplitude;
-            direction = _direction;
+            //direction = _direction;
             stimuliQuantity = _stimuliQuantity;
             width = _width;
             textNumber = _textNumber;
@@ -65,7 +65,7 @@ namespace Eletroestimulador_v02
             confFilePath = Path.Combine(confDocPath, confFileName);
             StreamWriter fileOutput = new StreamWriter(confFilePath, false);
             fileOutput.WriteLine("Amplitude\t" + amplitude.ToString() + Environment.NewLine);
-            fileOutput.WriteLine("Current_Direction\t" + direction_str + Environment.NewLine);
+            //fileOutput.WriteLine("Current_Direction\t" + direction_str + Environment.NewLine);
             fileOutput.WriteLine("Texture\t" + textNumber.ToString() + Environment.NewLine);
             fileOutput.WriteLine("Width\t" + width.ToString() + Environment.NewLine);
             fileOutput.Close();
@@ -84,7 +84,7 @@ namespace Eletroestimulador_v02
 
                 amplitude = Convert.ToInt32(textBox_amplitude.Text);
                 width = trackBar_spkWidth.Value;
-
+                /*
                 if (radioButton_anodic.Checked)
                 {
                     direction = 0;
@@ -96,7 +96,7 @@ namespace Eletroestimulador_v02
                     direction = 1;
                     direction_str = "CAT";
                 }
-
+                */
                 if (checkBox_random.Checked)
                     textNumber = 0;
                 else
@@ -127,11 +127,11 @@ namespace Eletroestimulador_v02
                 checkBox_random.Checked = false;
             }
                 
-
+            /*
             if (direction == 0)
                 radioButton_anodic.Checked = true;
             else if (direction == 1)
-                radioButton_cathodic.Checked = true;
+                radioButton_cathodic.Checked = true;*/
         }
 
         private void button_cancel_Click(object sender, EventArgs e)

@@ -45,10 +45,8 @@ namespace Eletroestimulador_v02
             InitializeComponent();
 
             // Control the activation of the parameters exclusive to square wave (pulse width)
-            if (radioButton_tipoQuadrada.Checked)
-                ativaOndaQ(true);
-            else
-                ativaOndaQ(false);
+            ativaOndaQ(true);
+            
 
             adicionaTBs();  // Include the textboxes in the list
         }
@@ -285,6 +283,8 @@ namespace Eletroestimulador_v02
                     button_iniciar.Enabled = true;  // Ativa o botão iniciar
                     label_ANL.Enabled = true;
                     label_ANLvalue.Enabled = true;
+
+                    button_conectar.Enabled = false;
                 }
             }
             catch (Exception ex)
@@ -407,7 +407,7 @@ namespace Eletroestimulador_v02
                 dados += ad.Codigos + ad.Valor.Text + "\n";
             }
 
-            dados += verificaDirecao(); // Verifica os radiobuttons de direção da corrente
+            //dados += verificaDirecao(); // Verifica os radiobuttons de direção da corrente
             dados += verificaOnda();    // Verifica os radiobuttons relacionados à forma de onda
 
             /* Devido ao sistema trabalhar com uma precisão de 1 us e resolução de 256 pontos, frequências
@@ -456,29 +456,8 @@ namespace Eletroestimulador_v02
          * relacionado à mesma
          */
         private string verificaOnda()
-        {
-            if (radioButton_tipoSenoide.Checked == true)
-                return Protocolos.wf_sin + "\n";
-            else if (radioButton_tipoQuadrada.Checked == true)
-                return Protocolos.wf_square + "\n";
-            else if (radioButton_tipoTriangular.Checked == true)
-                return Protocolos.wf_triangular + "\n";
-            else //(radioButton_tipoDenteDeSerra.Checked == true)
-                return Protocolos.wf_sawtooth + "\n";
-        }
-
-        /*
-         * Confere os radiobuttons relacionados à direção da corrente e retorna o código de protocolo 
-         * relacionado à mesma
-         */
-        private string verificaDirecao()
-        {
-            if (radioButton_tipoAnodica.Checked == true)
-                return Protocolos.iDirection_anodic + "\n";
-            else if (radioButton_tipoCatodica.Checked == true)
-                return Protocolos.iDirection_cathodic + "\n";
-            else
-                return Protocolos.iDirection_biDirectional + "\n";
+        { 
+            return Protocolos.wf_square + "\n";
         }
 
         /*
@@ -495,16 +474,6 @@ namespace Eletroestimulador_v02
         {
             foreach (TextBox tb in textBoxes)
                 tb.Enabled = enabled;
-        }
-
-        // Event that is called when the radio buttons check change
-        private void radioButton_tipoQuadrada_CheckedChanged(object sender, EventArgs e)
-        {
-            // Control the activation of the parameters exclusive to square wave (pulse width)
-            if (radioButton_tipoQuadrada.Checked)
-                ativaOndaQ(true);
-            else
-                ativaOndaQ(false);
         }
 
         // Control the activation of the parameters exclusive to square wave (pulse width)

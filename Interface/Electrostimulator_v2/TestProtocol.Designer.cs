@@ -35,7 +35,6 @@
             this.pictureBox_textura = new System.Windows.Forms.PictureBox();
             this.button_status = new System.Windows.Forms.Button();
             this.progressBar_cross = new System.Windows.Forms.ProgressBar();
-            this.label_counter = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox_textura)).BeginInit();
             this.SuspendLayout();
             // 
@@ -78,6 +77,7 @@
             this.pictureBox_textura.Location = new System.Drawing.Point(12, 27);
             this.pictureBox_textura.Name = "pictureBox_textura";
             this.pictureBox_textura.Size = new System.Drawing.Size(500, 750);
+            this.pictureBox_textura.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
             this.pictureBox_textura.TabIndex = 2;
             this.pictureBox_textura.TabStop = false;
             // 
@@ -103,17 +103,6 @@
             this.progressBar_cross.TabIndex = 5;
             this.progressBar_cross.Visible = false;
             // 
-            // label_counter
-            // 
-            this.label_counter.BackColor = System.Drawing.Color.Transparent;
-            this.label_counter.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label_counter.ForeColor = System.Drawing.SystemColors.ControlDarkDark;
-            this.label_counter.ImageAlign = System.Drawing.ContentAlignment.TopRight;
-            this.label_counter.Location = new System.Drawing.Point(457, 27);
-            this.label_counter.Name = "label_counter";
-            this.label_counter.Size = new System.Drawing.Size(57, 47);
-            this.label_counter.TabIndex = 6;
-            // 
             // TestProtocol
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -124,8 +113,8 @@
             this.Controls.Add(this.label_countDown);
             this.Controls.Add(this.button_start);
             this.Controls.Add(this.pictureBox_textura);
-            this.Controls.Add(this.label_counter);
             this.Controls.Add(this.button_status);
+            this.Cursor = System.Windows.Forms.Cursors.Cross;
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
             this.Name = "TestProtocol";
             this.Text = "TestProtocol";
@@ -144,6 +133,5 @@
         private System.Windows.Forms.PictureBox pictureBox_textura;
         private System.Windows.Forms.Button button_status;
         private System.Windows.Forms.ProgressBar progressBar_cross;
-        private System.Windows.Forms.Label label_counter;
     }
 }

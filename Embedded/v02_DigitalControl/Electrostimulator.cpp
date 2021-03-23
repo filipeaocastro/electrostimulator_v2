@@ -97,10 +97,8 @@ void Electrostimulator::checkSerial(estados *estadoAtual)
             //valor_DAC = map((uint16_t)tensao, 54, 274, 0, 4095);    // Converte pra saida do DAC em 8 bits de resolução
             //valor_DAC = map(i_amp, 0, CORRENTE_MAX, 0, 255);
             set_current = (uint16_t)(map(i_amp, 0, CORRENTE_MAX, 0, std_resolution));
-            //Serial.println(valor_DAC);
 
-            //analogWrite(SAIDA_DAC, saida_DAC);
-
+            // No Arduino DUE:
             // 1/6*V ~ 5/6*V | V = 3.3V
             // 0,54 até 2,74
             // 360 uA até 1823 uA
@@ -259,27 +257,7 @@ void Electrostimulator::checkSerial(estados *estadoAtual)
                     }
                     index_sum += buf_length;
                }
-               
-           }
-           /*
-           Serial.write("Saiu do while");
-           Serial.println();
-           uint8_t sum = 0;
-           for(uint16_t i = 0; i < total_spikes; i++)
-           {
-                if(spike_data[i])
-                    Serial.write("1");
-                else
-                    Serial.write("0");
-                
-                sum ++;
-                if(sum >= 100)
-                {
-                    Serial.println();
-                    sum = 0;
-                }
-           }*/
-            
+           }   
        }
     }
 }
@@ -351,6 +329,14 @@ void Electrostimulator::geraOndaQuad(estados *estadoAtual)
         {
             if(!ondaQ[waveIndex]) timerAlarmDisable(timer_Int);
 
+            // Escreve na saída do DAC de acordo com a posição em ondaQ
+            dacWrite(dac_pin, ((ondaQ[waveIndex]) ? controle : OFF));
+
+            // Foi implantada uma estratégia para evitar overshoot na borda de subida
+            // Na interrupção passada waveIndex foi incrementado e foi identificado que na próxima interrupção (essa) deve acontecer uma
+            // borda de subida. Para que o controlador PI não calcule um valor de controle muito alto (como a onda está em low, o erro será grande
+            // e o sinal de controle também, causando um overshoot), ele irá aplicar o último sinal de controle utilizado quando a onda estava 
+            // em HIGH e só então começa a recalcular o valor de controle. Dessa forma, o erro deve ser diminuído e o overshoot deve diminuir.
             if(firstEdge)
             {
                 firstEdge = false;
@@ -358,9 +344,6 @@ void Electrostimulator::geraOndaQuad(estados *estadoAtual)
                 if(ondaQ[waveIndex]) timerAlarmEnable(timer_Int);
             }
                 
-            // Escreve na saída do DAC
-            dacWrite(dac_pin, ((ondaQ[waveIndex]) ? controle : OFF));
-
             // Reset na variável de interrupção
             portENTER_CRITICAL(&timerMux);
             interrompeu = false;
@@ -371,11 +354,13 @@ void Electrostimulator::geraOndaQuad(estados *estadoAtual)
 
             bool oldState = (bool)ondaQ[waveIndex];
 
+
             if(waveIndex == SQUARE_WAVE_RES)
                 waveIndex = 0;
             else
                 waveIndex++;
 
+            // Verifica se deve haver uma borda de subida, seta a flag firstEdge como true se sim
             if(!firstEdge)
                 firstEdge = ((ondaQ[waveIndex] == 1) && !oldState);
 
@@ -429,8 +414,6 @@ void Electrostimulator::geraOndaQuad(estados *estadoAtual)
 void Electrostimulator::setupOndaQuad()
 {
     uint16_t samples;
-
-
     
     step = float(period) / float(SQUARE_WAVE_RES);  // Tempo entre uma amostra e outra
     if (step <= 0)
@@ -483,10 +466,6 @@ void Electrostimulator::setupOndaQuad()
 
     Serial.write("nTicks = ");
     Serial.println((uint32_t)nTicks);
-
-    //ledcSetup(CANAL_PWM, freq, resolution);
-
-    //ledcAttachPin(PINO_SAIDA, CANAL_PWM);
 }
 
 void Electrostimulator::geraFormaDeOnda()
@@ -496,23 +475,6 @@ void Electrostimulator::geraFormaDeOnda()
 
 void Electrostimulator::IRQtimer()
 {
-    /*
-    dacWrite(dac_pin, DAC_out);
-    portENTER_CRITICAL_ISR(&timerMux);
-    countTotal += nTicks;
-    portEXIT_CRITICAL_ISR(&timerMux);
-    if(waveIndex == SQUARE_WAVE_RES)
-    {
-        portENTER_CRITICAL_ISR(&timerMux);
-        indexWave = 0;
-        portEXIT_CRITICAL_ISR(&timerMux);
-    }
-    else
-    {
-        portENTER_CRITICAL_ISR(&timerMux);
-        indexWave++;
-        portEXIT_CRITICAL_ISR(&timerMux);
-    } */
     portENTER_CRITICAL_ISR(&timerMux);
     interrompeu = true;
     portEXIT_CRITICAL_ISR(&timerMux);
@@ -523,11 +485,11 @@ void Electrostimulator::IRQ_timer_int()
     if(onda == SPIKE)
     {
         if(!spike_off)
-        {
             calc_controle();
-        }
-        
     }
+        
+        
+    
     else
         if(ondaQ[waveIndex]) calc_controle();
 
@@ -621,36 +583,6 @@ void Electrostimulator::geraSpike(estados *estadoAtual)
 }
 void Electrostimulator::setupSpike()
 {
-    switch (direcao_corrente)
-    {
-        // Catodica: 0 a 1.65 V
-        case CATODICA:
-            //sum = 0;
-            //multiplier = 1;
-            spk_on = 127 - valor_DAC;
-            spk_off = 127;
-            break;
-
-        // Anodica 1.65 a 3.3 V
-        case ANODICA:
-            //sum = 128;
-            //multiplier = 1;
-            spk_on = 128 + valor_DAC;
-            spk_off = 127;
-            break;
-
-        // Bidirecional 0 a 3.3 V
-        
-        case BIDIRECIONAL:
-        /*
-            sum = 0;
-            multiplier = 2;
-            valorUp = 128 + valor_DAC;
-            valorDown = 127 - valor_DAC;*/
-            break;
-            
-    }
-
     Serial.write("bandwidth = ");
     Serial.println((uint32_t)bandwidth);
     intrrpts_spk_on = (uint8_t)(bandwidth/250);
