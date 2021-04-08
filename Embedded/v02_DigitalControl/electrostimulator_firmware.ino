@@ -25,17 +25,18 @@
 
 #define TiposDeOnda 3   // Necessary?
 #define WAVE_RESOLUTION 100
-#define DAC_REF_PIN 25       // Saída para a fonte de corrente
+#define DAC_REF_PIN 25 //DAC_GPIO25_CHANNEL  // Saída para a fonte de corrente (pin 25)
 #define PWM_OSC_PIN 33  // PWM oscilator output
 #define SD_PIN 32 // Shut Down pin - Active high
-#define ADC_CURRENT_PIN 34
-#define ADC_SETPOINT_PIN 35
+#define ADC_CURRENT_PIN 34 //ADC1_GPIO34_CHANNEL // Pino 34
+#define ADC_SETPOINT_PIN 35 //ADC1_GPIO35_CHANNEL // Pino 35
 #define SWITCH_PIN 15
 
 estados estado = STAND_BY;
 
 hw_timer_t * timer = NULL;
 hw_timer_t * timer_int = NULL;
+hw_timer_t * timer_dac = NULL;
 Electrostimulator stimulator(DAC_REF_PIN, PWM_OSC_PIN, SD_PIN, ADC_CURRENT_PIN, ADC_SETPOINT_PIN, SWITCH_PIN);
 
 //static byte formasDeOnda[TiposDeOnda][QteAmostras] = {0};
@@ -67,7 +68,10 @@ void setup()
   timer_int = timerBegin(1, 80, true); // inicia com o passo de 1 us
   timerAttachInterrupt(timer_int, &timerISR_Int, true);
 
-  stimulator.configTimer(timer, timer_int);
+  timer_dac = timerBegin(2, 80, true); // inicia com o passo de 1 us
+  timerAttachInterrupt(timer_dac, &timerISR_Dac, true);
+
+  stimulator.configTimer(timer, timer_int, timer_dac);
   //stimulator.interromp(&_interrompeu, &timerMux);
 
 }
@@ -144,4 +148,9 @@ void timerISR()
 void timerISR_Int()
 {
   stimulator.IRQ_timer_int();
+}
+
+void timerISR_Dac()
+{
+  stimulator.IRQ_timer_dac();
 }

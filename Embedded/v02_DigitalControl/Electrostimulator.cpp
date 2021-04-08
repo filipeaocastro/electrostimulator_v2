@@ -1,5 +1,6 @@
 #include "Electrostimulator.h"
 
+
 Electrostimulator::Electrostimulator(uint8_t _dac_pin, uint8_t _osc_pin, uint8_t _sd_pin, uint8_t _adc_curr_pin, uint8_t _adc_sp_pin, 
     uint8_t _switch_pin)
 {
@@ -21,12 +22,16 @@ void Electrostimulator::begin()
 
     analogReadResolution(ADC_RESOLUTION);
 
+    //dac_output_enable(dac_pin);
+
     ledcSetup(PWM_CHANNEL, PWM_FREQ, PWM_RESOLUTION);
     ledcAttachPin(osc_pin, PWM_CHANNEL);
 
     digitalWrite(sd_pin, LOW);
     ledcWrite(PWM_CHANNEL, OFF);
-    dacWrite(dac_pin, OFF); // Put the output to low before starting
+
+    dacWrite(dac_pin, OFF);
+    //dacWrite(dac_pin, OFF); // Put the output to low before starting
 }
 
 void Electrostimulator::checkSerial(estados *estadoAtual)
@@ -287,21 +292,7 @@ void Electrostimulator::checkSerial_Fast(estados *estadoAtual)
 
 // Função chamada na maquina de estados
 void Electrostimulator::geraOndaQuad(estados *estadoAtual)
-{
-    long tempo_on_total = millis();
-    long tempo_teste = millis();
-    uint32_t tempo_step = 0;
-    uint8_t valor_saida = 127;
-    uint8_t multiplier = 1;
-    uint8_t sum = 0;
-    uint8_t DAC_On = valor_DAC;
-    uint8_t DAC_Off = OFF;
-
-    
-    
-    uint16_t newStep = (uint16_t)step;
-    
-
+{ 
     /************* timer **************/
     uint32_t tempoTotal = total_duration * 10000;    // Converte o total duration pra us pra comparar com o que o timer incrementa
 
@@ -362,33 +353,22 @@ void Electrostimulator::geraOndaQuad(estados *estadoAtual)
 
             // Verifica se deve haver uma borda de subida, seta a flag firstEdge como true se sim
             if(!firstEdge)
-                firstEdge = ((ondaQ[waveIndex] == 1) && !oldState);
-
-            
-            
+                firstEdge = ((ondaQ[waveIndex] == 1) && !oldState);  
         }
-/*
-        if( (millis() - tempo_teste > 500) && ondaQ[waveIndex])
+        // if(ondaQ[waveIndex])
+        //     calc_controle();
+
+        if(isr_int)
         {
-            uint8_t reads[2];
-            reads[0] = readADC(adc_sp_pin);
-            reads[1] = readADC(adc_curr_pin);
+            portENTER_CRITICAL_ISR(&timerMux);
+            isr_int = false;
+            portEXIT_CRITICAL_ISR(&timerMux);
 
-            Serial.write("Controle = ");
-            Serial.println(controle);
-            Serial.write("Set Point = ");
-            Serial.println(reads[0]);
-            Serial.write("Corrente lida = ");
-            Serial.println(reads[1]);
-            Serial.write("mInt = ");
-            Serial.println(mInt);
-            Serial.write("mProp = ");
-            Serial.println(mProp);
-            Serial.write("Erro = ");
-            Serial.println(erro);
-            tempo_teste = millis();
+            //dacWrite(dac_pin, (spike_off ? OFF : controle));
+            calc_controle();
+            
         }
-*/
+
         if(*estadoAtual != EE_SQUARE)
         {
             enableTimers(false);
@@ -468,10 +448,7 @@ void Electrostimulator::setupOndaQuad()
     Serial.println((uint32_t)nTicks);
 }
 
-void Electrostimulator::geraFormaDeOnda()
-{
-    // ver qual a onda ativa
-}
+
 
 void Electrostimulator::IRQtimer()
 {
@@ -480,28 +457,35 @@ void Electrostimulator::IRQtimer()
     portEXIT_CRITICAL_ISR(&timerMux);
 }
 
+void Electrostimulator::IRQ_timer_dac()
+{
+    portENTER_CRITICAL_ISR(&timerMux);
+    int_dac = true;
+    portEXIT_CRITICAL_ISR(&timerMux);
+    // dacWrite(dac_pin, (spike_off ? OFF : controle));
+}
+
 void Electrostimulator::IRQ_timer_int()
 {
     if(onda == SPIKE)
     {
-        if(!spike_off)
-            calc_controle();
+        //if(!spike_off)
+            //calc_controle();
+            accquireData();
     }
-        
-        
-    
-    else
-        if(ondaQ[waveIndex]) calc_controle();
 
-    
+    else
+        if(ondaQ[waveIndex]) accquireData(); //calc_controle();
 }
 
-void Electrostimulator::configTimer(hw_timer_t * _timer, hw_timer_t * _timer_int)
+void Electrostimulator::configTimer(hw_timer_t * _timer, hw_timer_t * _timer_int, hw_timer_t * _timer_dac)
 {
     timer_Onda = _timer;
     timer_Int = _timer_int;
+    timer_Dac = _timer_dac;
 
     timerAlarmWrite(timer_Int, TICKS_INT, true);
+    timerAlarmWrite(timer_Dac, TICKS_TIMER_DAC, true);
 }
 
 void Electrostimulator::geraSpike(estados *estadoAtual)
@@ -510,11 +494,16 @@ void Electrostimulator::geraSpike(estados *estadoAtual)
     uint8_t n_interrupts = 0;
     uint16_t spkIndex = 0;
     uint8_t spk_true = 0;
+    bool timerEnabled = false;
     
     Serial.write("INITIATED\n");
     timerAlarmWrite(timer_Onda, nTicks, true);
     stimulatorState(ON);
-    enableTimers(true);
+    //enableTimers(true);
+    timerAlarmEnable(timer_Onda);
+    timerAlarmEnable(timer_Dac);
+    //timerAlarmEnable(timer_Int);
+    
     
     while(true)
     {
@@ -531,50 +520,87 @@ void Electrostimulator::geraSpike(estados *estadoAtual)
             if(n_interrupts >= 4)
             {
                 n_interrupts = 0;
-                spkIndex ++;
+                //spkIndex ++;
+                (spkIndex > total_spikes) ? (spkIndex = 0) : (spkIndex ++);
                 nextSpike = true;
+                
             }
             // If there is a spike on, it updates its time on
             if(spk_true > 0)
                 spk_true --;
+
+            // dacWrite(dac_pin, (spike_off ? OFF : controle));
+        }
+        
+
+        if(spk_true == 0)
+        {
+            spike_off = true;
+            if(timerEnabled)
+            {
+                timerAlarmDisable(timer_Int);
+                timerEnabled = false;
+            }   
         }
 
+        // if(!spike_off)
+        //     calc_controle();
+
+        if(int_dac)
+        {
+            portENTER_CRITICAL(&timerMux);
+            int_dac = false;
+            portEXIT_CRITICAL(&timerMux);
+
+            dacWrite(dac_pin, (spike_off ? OFF : controle));
+            calc_controle();
+            
+        }
+        
         // Volta ao início do vetor de spikes caso chegue no fim
-        if(spkIndex > total_spikes)
-            spkIndex = 0;
+        //if(spkIndex > total_spikes)
+        //    spkIndex = 0;
 
         // Enter in this area if it should pass to the next spike in spike data OR there is a spike on
-        if(nextSpike || (spike_off == false) )
+        if(nextSpike /*|| (spike_off == false)*/ )
         {
             nextSpike = false;
 
             // Check if there is a spike in the spike data
-            if(spike_data[spkIndex])    // An spike should be generated
+            if(spike_data[spkIndex])    // A spike should be generated
             {
                 // If so, the output goes high during the next (intrrpts_spk_on) interrptions
                 //Serial.write("SPK\n");
                 //dacWrite(dac_pin, spk_on);
                 spk_true = intrrpts_spk_on;   // The time of interrupts that the spike will remain on
                 spike_off = false;
+                timerRestart(timer_Int);
+                timerAlarmEnable(timer_Int);
+                timerEnabled = true;
             }
             // If the next spike is 0, the spike on timed out and there is a spike on, turns it off
-            else if(!spike_data[spkIndex] && (spk_true == 0) && (spike_off == false) ) // There is a spike on, but it's time expired
-            {
-                dacWrite(dac_pin, OFF);
-                spike_off = true;
-            }
+            // else if(!spike_data[spkIndex] && (spk_true == 0) && (spike_off == false) ) // There is a spike on, but it's time expired
+            // {
+            //     //dacWrite(dac_pin, OFF);
+            //     spike_off = true;
+            // }
         }
 
         // Caso um spike esteja ativo, ativa DAC a cada loop para manter o valor atualizado
-        if(!spike_off)
-            dacWrite(dac_pin, controle);
+        // if(!spike_off)
+        //     dacWrite(dac_pin, controle);
+        // else
+        //     dacWrite(dac_pin, OFF);
         
-
-        checkSerial_Fast(estadoAtual);  // Verifica se o comando STO não chegou
+        //dacWrite(dac_pin, (spike_off ? OFF : controle));
+        
+        if(Serial.available()) checkSerial_Fast(estadoAtual);  // Verifica se o comando STO não chegou
+        
         if(*estadoAtual != EE_SPK)
         {
             enableTimers(false);
             stimulatorState(OFF);
+            timerEnabled = false;
             dacWrite(dac_pin, OFF);
             Serial.write("STOPPED\n");
             return;
@@ -625,39 +651,58 @@ void Electrostimulator::stimulatorState(bool turnON)
 }
 
 // Lê ADC_AVG vezes uma entrada analógica e faz a média desse valor
-uint8_t Electrostimulator::readADC(uint8_t adc_pin)
+void Electrostimulator::readADC(/*const adc1_channel_t& adc_pin*/)
 {
-    uint16_t sum = 0;
+    int16_t sum = 0;
     for(int i = 0; i < ADC_AVG; i++)
-        sum += analogRead(adc_pin); // Converte a resolução de 9 bits pra 8
+        sum += analogRead(adc_curr_pin); 
     sum /= ADC_AVG;
-    return (uint8_t)(sum >> 1);
+    current = sum >> 1;//(uint8_t)(sum >> 1); // Converte a resolução de 9 bits pra 8
 }
 
 // Altera a variável de controle
 void Electrostimulator::calc_controle()
 {
-    //int16_t erro;// = (float)((!digitalRead(switch_pin)) ? (readADC(adc_sp_pin) - readADC(adc_curr_pin)) : (set_current - readADC(adc_curr_pin)));
-    if(!digitalRead(switch_pin))
-        erro = (int16_t)analogRead(adc_sp_pin) - (int16_t)readADC(adc_curr_pin);
-    else
-        erro = (int16_t)set_current - (int16_t)readADC(adc_curr_pin);
-    mProp = (int16_t)(float(erro) * KProp);
-    mInt += (int16_t)(float(erro) * KInt);
+    // if(!digitalRead(switch_pin))
+    //     erro = (int16_t)(analogRead(adc_sp_pin) >> 1) - readADC(/*adc_curr_pin*/);
+    // else
+    //     erro = (int16_t)set_current - readADC(/*adc_curr_pin*/);
+    erro = (readPot ? setPointPot : (int16_t)set_current) - current; 
+    mProp = (int16_t)((float)erro * KProp);
+    mInt += (int16_t)((float)erro * KInt);
     mInt = constrain(mInt, -100, 255);
-    controle = setBound(mProp + mInt);
+    setBound(mProp + mInt, controle);
 
     //Serial.write("Controle = ");
     //Serial.println(controle);
 }
 
+void Electrostimulator::accquireData()
+{
+    readPot = !digitalRead(switch_pin);
+    readADC();
+    if(readPot) setPointPot = (int16_t)(analogRead(adc_sp_pin) >> 1);
+
+    portENTER_CRITICAL_ISR(&timerMux);
+    isr_int = true;
+    portEXIT_CRITICAL_ISR(&timerMux);
+}
+
 // SE MUDAR O ADC RESOLUTION (8), TEM QUE MUDAR ESSA FUNÇÃO
 // Limita o valor de entrada entre dacMin e dacMax
-uint8_t Electrostimulator::setBound(int16_t val)
+void Electrostimulator::setBound(int16_t val, uint8_t& newVal)
 {
-    if(val > dacMax) return dacMax;
-    if(val < dacMin) return dacMin;
-    return (uint8_t)val;
+    if(val > dacMax) 
+    {
+        newVal = dacMax;
+        return;
+    }
+    if(val < dacMin)
+    {
+        newVal = dacMin;
+        return;
+    }
+    newVal = val;
     //return (uint8_t)((val > dacMax) ? dacMax : ((val < dacMin) ? dacMin : val));
 }
 
@@ -673,5 +718,6 @@ void Electrostimulator::enableTimers(bool enable)
     {
         timerAlarmDisable(timer_Onda);
         timerAlarmDisable(timer_Int);
+        timerAlarmDisable(timer_Dac);
     }
 }

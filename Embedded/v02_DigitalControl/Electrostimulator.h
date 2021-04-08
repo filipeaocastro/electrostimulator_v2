@@ -16,7 +16,8 @@
 
 #define ADC_AVG 3
 
-#define TICKS_INT 100
+#define TICKS_INT 100 // Intervalo entre interrupções do timer de controle PI
+#define TICKS_TIMER_DAC 100
 
 #define SQUARE_WAVE_RES 150 // Antes era 50
 #define SPIKE_DATA_LENGTH 8000
@@ -42,6 +43,7 @@ typedef enum{
 class Electrostimulator
 {
   private:
+
     ondas onda = QUADRADA;
     i_direction direcao_corrente = ANODICA;
 
@@ -97,8 +99,10 @@ class Electrostimulator
     portMUX_TYPE timerMux = portMUX_INITIALIZER_UNLOCKED;
     hw_timer_t * timer_Onda = NULL;
     hw_timer_t * timer_Int = NULL;
-
+    hw_timer_t * timer_Dac = NULL;
+    volatile bool int_dac = false;
     volatile bool timer_on = false;
+    volatile bool isr_int = false;
 
     // Variáveis do controle PI
     const float KInt = 0.09, KProp = 0.15;    // KInt = 0.1, KProp = 0.2; //Menor valor: 0.004 --> 1/0.004 = 250
@@ -107,15 +111,21 @@ class Electrostimulator
     int16_t mInt = 0, mProp = 0;
     uint8_t controle = 0;
     int16_t erro;
+    bool readPot = false;
+    int16_t setPointPot = 0;
+    int16_t current = 0;
 
     bool firstEdge = false;
+
+    
 
 
     const uint8_t dacMin = 0, dacMax = 255;
 
     void calc_controle();
-    uint8_t readADC(uint8_t adc_pin);
-    uint8_t setBound(int16_t val);
+    void readADC(/*const adc1_channel_t& adc_pin*/);
+    void setBound(int16_t val, uint8_t& newVal);
+    void accquireData();
     
 
     void setupOndaQuad();
@@ -123,9 +133,11 @@ class Electrostimulator
     void stimulatorState(bool turnON);
     void enableTimers(bool enable);
     
+    
 
   public:
-    Electrostimulator(uint8_t _dac_pin, uint8_t _osc_pin, uint8_t _sd_pin, uint8_t _adc_curr_pin, uint8_t _adc_sp_pin, uint8_t _switch_pin);
+    Electrostimulator(uint8_t _dac_pin, uint8_t _osc_pin, uint8_t _sd_pin, uint8_t _adc_curr_pin, uint8_t _adc_sp_pin, 
+    uint8_t _switch_pin);
 
     void begin();
     void checkSerial(estados *estadoAtual);
@@ -133,10 +145,12 @@ class Electrostimulator
     void geraOndaQuad(estados *estadoAtual);
     void geraSpike(estados *estadoAtual);
     void geraFormaDeOnda();
-
-    void configTimer(hw_timer_t * _timer, hw_timer_t * _timer_int);
-    void IRQtimer();
     void IRQ_timer_int();
+    void IRQ_timer_dac();
+
+    void configTimer(hw_timer_t * _timer, hw_timer_t * _timer_int, hw_timer_t * _timer_dac);
+    void IRQtimer();
+    
 
     void interromp(volatile bool * _int, portMUX_TYPE * _timerMux);
 
