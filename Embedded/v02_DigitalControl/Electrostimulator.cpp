@@ -30,8 +30,7 @@ void Electrostimulator::begin()
     digitalWrite(sd_pin, LOW);
     ledcWrite(PWM_CHANNEL, OFF);
 
-    dacWrite(dac_pin, OFF);
-    //dacWrite(dac_pin, OFF); // Put the output to low before starting
+    dacWrite(dac_pin, OFF); // Put the output to low before starting
 }
 
 void Electrostimulator::checkSerial(estados *estadoAtual)
@@ -469,9 +468,10 @@ void Electrostimulator::IRQ_timer_int()
 {
     if(onda == SPIKE)
     {
-        //if(!spike_off)
-            //calc_controle();
+        if(!spike_off)
             accquireData();
+            //calc_controle();
+            
     }
 
     else
@@ -551,10 +551,8 @@ void Electrostimulator::geraSpike(estados *estadoAtual)
             portENTER_CRITICAL(&timerMux);
             int_dac = false;
             portEXIT_CRITICAL(&timerMux);
-
-            dacWrite(dac_pin, (spike_off ? OFF : controle));
             calc_controle();
-            
+            dacWrite(dac_pin, (spike_off ? OFF : controle));
         }
         
         // Volta ao início do vetor de spikes caso chegue no fim
@@ -574,9 +572,13 @@ void Electrostimulator::geraSpike(estados *estadoAtual)
                 //dacWrite(dac_pin, spk_on);
                 spk_true = intrrpts_spk_on;   // The time of interrupts that the spike will remain on
                 spike_off = false;
-                timerRestart(timer_Int);
-                timerAlarmEnable(timer_Int);
-                timerEnabled = true;
+                if(!timerEnabled)
+                {
+                    timerRestart(timer_Int);
+                    timerAlarmEnable(timer_Int);
+                    timerEnabled = true;
+                }
+                
             }
             // If the next spike is 0, the spike on timed out and there is a spike on, turns it off
             // else if(!spike_data[spkIndex] && (spk_true == 0) && (spike_off == false) ) // There is a spike on, but it's time expired

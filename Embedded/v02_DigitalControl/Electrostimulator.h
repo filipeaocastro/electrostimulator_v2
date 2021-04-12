@@ -16,8 +16,8 @@
 
 #define ADC_AVG 3
 
-#define TICKS_INT 100 // Intervalo entre interrupções do timer de controle PI
-#define TICKS_TIMER_DAC 100
+#define TICKS_INT 60 // Intervalo entre interrupções do timer de controle PI (us)
+#define TICKS_TIMER_DAC 60 // (us)
 
 #define SQUARE_WAVE_RES 150 // Antes era 50
 #define SPIKE_DATA_LENGTH 8000
