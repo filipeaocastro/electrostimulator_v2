@@ -86,7 +86,10 @@
             this.Controls.Add(this.button_novo);
             this.Controls.Add(this.button_carregar);
             this.Controls.Add(this.label_eletroestimulador);
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
+            this.MaximizeBox = false;
             this.Name = "TelaInicial";
+            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Electrostimulator";
             this.ResumeLayout(false);
             this.PerformLayout();

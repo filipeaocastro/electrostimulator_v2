@@ -183,7 +183,10 @@
             this.Controls.Add(this.label_amplitude);
             this.Controls.Add(this.numericUpDown_textureNumber);
             this.Controls.Add(this.label_amplitudeValue);
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
+            this.Location = new System.Drawing.Point(700, 700);
             this.Name = "spkParameters";
+            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "spkParameters";
             ((System.ComponentModel.ISupportInitialize)(this.numericUpDown_textureNumber)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.trackBar_spkWidth)).EndInit();

@@ -328,6 +328,7 @@ namespace Eletroestimulador_v02
             }
             filePath = Path.Combine(docPath, fileName);
             pictureBox_textura.Image = Image.FromFile(filePath);    // Shows the image
+            button_status.Focus();
         }
 
         #endregion
@@ -510,6 +511,12 @@ namespace Eletroestimulador_v02
 
                 endStimulation(true);
             }
+            if (e.KeyCode == Keys.Escape)
+            {
+                telaSpikes.ESPSerial.WriteLine(Protocolos.parar);   // Send the command to stop the stimulation
+                Application.Exit();
+            }
+               
         }
 
         #region file output related functions
@@ -569,12 +576,26 @@ namespace Eletroestimulador_v02
 
         private void TestProtocol_FormClosed(object sender, FormClosedEventArgs e)
         {
+            telaSpikes.ESPSerial.WriteLine(Protocolos.parar);   // Send the command to stop the stimulation
             Application.Exit();
+        }
+
+        private void pictureBox_textura_PreviewKeyDown(object sender, PreviewKeyDownEventArgs e)
+        {
+            if (e.KeyCode == Keys.Escape)
+            {
+                telaSpikes.ESPSerial.WriteLine(Protocolos.parar);   // Send the command to stop the stimulation
+                Application.Exit();
+            }
+        }
+
+        private void TestProtocol_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Escape)
+            {
+                telaSpikes.ESPSerial.WriteLine(Protocolos.parar);   // Send the command to stop the stimulation
+                Application.Exit();
+            }
         }
     }
 }
-
-/* TO DO
- * Ver a fonte das imagens de textura
- * Ver se tem como fazer um jeito pra Ana upar as imagens dela
- */

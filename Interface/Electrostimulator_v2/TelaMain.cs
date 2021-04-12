@@ -447,6 +447,8 @@ namespace Eletroestimulador_v02
         // Closes the application (not just the window)
         private void fechaApp(object sender, FormClosedEventArgs e)
         {
+            if(ESPSerial.IsOpen)
+                ESPSerial.WriteLine(Protocolos.parar); 
             Application.Exit();
         }
 

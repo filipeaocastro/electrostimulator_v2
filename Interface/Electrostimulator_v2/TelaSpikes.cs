@@ -311,8 +311,8 @@ namespace Eletroestimulador_v02
                     case estados_estimulacao.ATUALIZADO:
                         // Enviar comando p/ INICIAR e só mudar o estado quando o ESP avisar que iniciou
                         ESPSerial.WriteLine(Protocolos.iniciar);
-                        label_fileName.Enabled = false;
-                        textBox_fileName.Enabled = false;
+                        //label_fileName.Enabled = false;
+                        //textBox_fileName.Enabled = false;
                         break;
 
                     case estados_estimulacao.DESATUALIZADO:
@@ -327,6 +327,7 @@ namespace Eletroestimulador_v02
                         //{
 
                         //}
+                        button_update.Enabled = false;
                         readConf();
                         updateTexture(textureNumber);
                         sendData();
@@ -350,8 +351,8 @@ namespace Eletroestimulador_v02
             {
                 case "Update":
                     estadoAtual = estados_estimulacao.DESATUALIZADO;
-                    label_fileName.Enabled = true;
-                    textBox_fileName.Enabled = true;
+                    //label_fileName.Enabled = true;
+                    //textBox_fileName.Enabled = true;
                     //enableTBs(true);
                     break;
 
@@ -364,11 +365,12 @@ namespace Eletroestimulador_v02
                     break;
 
                 case "Start":
-                   // ESPSerial.WriteLine(Protocolos.);
+                    // ESPSerial.WriteLine(Protocolos.);
                     //initTimer(false);   // Para o timer, só inicia quando o ESP avisa que pode
+                    button_update.Enabled = true;
                     estadoAtual = estados_estimulacao.ATUALIZADO;
-                    label_fileName.Enabled = true;
-                    textBox_fileName.Enabled = true;
+                    //label_fileName.Enabled = true;
+                    //textBox_fileName.Enabled = true;
                     //enableTBs(true);
                     break;
             }
@@ -444,6 +446,8 @@ namespace Eletroestimulador_v02
 
         private void TelaSpikes_FormClosed(object sender, FormClosedEventArgs e)
         {
+            if(ESPSerial.IsOpen)
+                ESPSerial.WriteLine(Protocolos.parar); 
             Application.Exit();
         }
 
@@ -565,7 +569,8 @@ namespace Eletroestimulador_v02
 
                     string docPath =
                     Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-                    docPath = Path.Combine(docPath, "saves txt", textBox_fileName.Text + ".txt");
+                    string filename = "teste n" + rand.Next(300).ToString();
+                    docPath = Path.Combine(docPath, "saves txt", filename + ".txt");
 
 
                     using (StreamWriter outputFile = new StreamWriter(docPath))
@@ -592,8 +597,8 @@ namespace Eletroestimulador_v02
         private void button_update_PreviewKeyDown(object sender, PreviewKeyDownEventArgs e)
         {
             Console.WriteLine("Bateu a tecla");
-            if (e.KeyCode == Keys.Up)
-                saveOutput();
+           // if (e.KeyCode == Keys.Up)
+           //     saveOutput();
         }
 
         private void setConfFile()

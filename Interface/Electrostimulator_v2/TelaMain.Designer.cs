@@ -260,7 +260,9 @@
             this.Controls.Add(this.button_conectar);
             this.Controls.Add(this.button_iniciar);
             this.Controls.Add(this.button_salvar);
+            this.MaximizeBox = false;
             this.Name = "TelaMain";
+            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "TelaMain";
             this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.fechaApp);
             this.groupBox_parametros.ResumeLayout(false);
