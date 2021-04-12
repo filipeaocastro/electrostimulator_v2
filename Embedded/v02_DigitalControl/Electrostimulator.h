@@ -105,7 +105,7 @@ class Electrostimulator
     volatile bool isr_int = false;
 
     // Variáveis do controle PI
-    const float KInt = 0.09, KProp = 0.15;    // KInt = 0.1, KProp = 0.2; //Menor valor: 0.004 --> 1/0.004 = 250
+    const float KInt = 0.05, KProp = 0.15; //KInt = 0.09, KProp = 0.15;   // KInt = 0.1, KProp = 0.2; //Menor valor: 0.004 --> 1/0.004 = 250
     const uint8_t iKInt = (uint8_t)(1/KInt);
     const uint8_t iKProp = (uint8_t)(1/KProp);
     int16_t mInt = 0, mProp = 0;

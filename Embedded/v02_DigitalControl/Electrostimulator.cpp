@@ -551,7 +551,8 @@ void Electrostimulator::geraSpike(estados *estadoAtual)
             portENTER_CRITICAL(&timerMux);
             int_dac = false;
             portEXIT_CRITICAL(&timerMux);
-            calc_controle();
+            if(!spike_off)
+                calc_controle();
             dacWrite(dac_pin, (spike_off ? OFF : controle));
         }
         
